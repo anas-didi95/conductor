@@ -4,6 +4,11 @@
       "version": "2.0.5",
       "resolved": "ghcr.io/devcontainers-extra/features/pnpm@sha256:694c2b6182435c9e9c06f6071728b087c1181b38c18cecf0defe2ab8c11cddd6",
       "integrity": "sha256:694c2b6182435c9e9c06f6071728b087c1181b38c18cecf0defe2ab8c11cddd6"
+    },
+    "ghcr.io/sliekens/devcontainer-features/opencode:1": {
+      "version": "1.0.2",
+      "resolved": "ghcr.io/sliekens/devcontainer-features/opencode@sha256:cdad6f8735e534204252b81cf3e31765adea0a50a4307aae814e23a7784908e4",
+      "integrity": "sha256:cdad6f8735e534204252b81cf3e31765adea0a50a4307aae814e23a7784908e4"
     }
   }
 }
