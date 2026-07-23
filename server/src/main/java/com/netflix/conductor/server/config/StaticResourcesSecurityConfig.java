@@ -12,8 +12,9 @@
  */
 package com.netflix.conductor.server.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -32,16 +33,17 @@ public class StaticResourcesSecurityConfig {
 
     @Configuration
     @EnableWebSecurity
-    @ConditionalOnProperty(
-            name = "conductor.ui.security.static-resources-protection.enabled",
-            havingValue = "true")
+    @EnableConfigurationProperties(StaticResourcesProtectionProperties.class)
+    @ConditionalOnExpression(
+            "'${conductor.enable.ui.serving:true}'.equals('true') && "
+                    + "'${conductor.ui.security.static-resources-protection.enabled:false}'.equals('true')")
     public static class ProtectedSecurityConfig {
 
-        @Value("${conductor.ui.security.static-resources-protection.username:admin}")
-        private String username;
+        private final StaticResourcesProtectionProperties properties;
 
-        @Value("${conductor.ui.security.static-resources-protection.password:admin}")
-        private String password;
+        public ProtectedSecurityConfig(StaticResourcesProtectionProperties properties) {
+            this.properties = properties;
+        }
 
         @Bean
         @Order(1)
@@ -66,6 +68,15 @@ public class StaticResourcesSecurityConfig {
                                                     "/login",
                                                     "/login/**",
                                                     "/login.html",
+                                                    "/conductorLogo.svg",
+                                                    "/conductorLogo.png",
+                                                    "/conductorLogo-dark.svg",
+                                                    "/conductorLogoSmall.svg",
+                                                    "/conductorLogoSmall.png",
+                                                    "/orkes-logo-purple-2x.png",
+                                                    "/orkes-logo-purple-inverted-2x.png",
+                                                    "/logo.png",
+                                                    "/robots.txt",
                                                     "/favicon.ico")
                                             .permitAll()
                                             .anyRequest()
@@ -75,20 +86,64 @@ public class StaticResourcesSecurityConfig {
                                     form.loginPage("/login.html")
                                             .loginProcessingUrl("/login")
                                             .defaultSuccessUrl("/", true))
-                    .logout(logout -> logout.logoutSuccessUrl("/login.html?logout"))
-                    .csrf(AbstractHttpConfigurer::disable);
+                    .logout(
+                            logout ->
+                                    logout.logoutUrl("/logout")
+                                            .invalidateHttpSession(true)
+                                            .clearAuthentication(true)
+                                            .deleteCookies("JSESSIONID")
+                                            .logoutSuccessUrl("/login.html?logout"))
+                    .sessionManagement(
+                            session -> {
+                                session.sessionFixation().migrateSession();
+                                session.sessionCreationPolicy(
+                                        org.springframework.security.config.http
+                                                .SessionCreationPolicy.IF_REQUIRED);
+                                session.maximumSessions(1).maxSessionsPreventsLogin(false);
+                                session.invalidSessionUrl("/login.html?expired");
+                            })
+                    .headers(
+                            headers -> {
+                                headers.contentTypeOptions();
+                                headers.frameOptions(frameOptions -> frameOptions.deny());
+                                headers.cacheControl();
+                            });
+            if (properties.isCsrfEnabled()) {
+                http.csrf(
+                        csrf ->
+                                csrf.csrfTokenRepository(
+                                        org.springframework.security.web.csrf
+                                                .CookieCsrfTokenRepository.withHttpOnlyFalse()));
+            } else {
+                http.csrf(AbstractHttpConfigurer::disable);
+            }
             return http.build();
         }
 
         @Bean
         public UserDetailsService userDetailsService(PasswordEncoder passwordEncoder) {
-            UserDetails user =
-                    User.builder()
-                            .username(username)
-                            .password(passwordEncoder.encode(password))
-                            .roles("USER")
-                            .build();
-            return new InMemoryUserDetailsManager(user);
+            InMemoryUserDetailsManager manager = new InMemoryUserDetailsManager();
+            for (StaticResourcesProtectionProperties.UserConfig user : properties.getUsers()) {
+                String encodedPassword =
+                        isBcryptHash(user.getPassword())
+                                ? user.getPassword()
+                                : passwordEncoder.encode(user.getPassword());
+                UserDetails details =
+                        User.builder()
+                                .username(user.getUsername())
+                                .password(encodedPassword)
+                                .roles(user.getRoles().split(","))
+                                .build();
+                manager.createUser(details);
+            }
+            return manager;
+        }
+
+        private boolean isBcryptHash(String password) {
+            return password != null
+                    && (password.startsWith("$2a$")
+                            || password.startsWith("$2b$")
+                            || password.startsWith("$2y$"));
         }
 
         @Bean
@@ -99,15 +154,32 @@ public class StaticResourcesSecurityConfig {
 
     @Configuration
     @EnableWebSecurity
-    @ConditionalOnProperty(
-            name = "conductor.ui.security.static-resources-protection.enabled",
-            havingValue = "false",
-            matchIfMissing = true)
+    @ConditionalOnExpression(
+            "'${conductor.enable.ui.serving:true}'.equals('true') && "
+                    + "!'${conductor.ui.security.static-resources-protection.enabled:false}'.equals('true')")
     public static class PermitAllSecurityConfig {
 
         @Bean
         @Order(99)
         public SecurityFilterChain permitAllFilterChain(HttpSecurity http) throws Exception {
+            http.authorizeHttpRequests(authz -> authz.anyRequest().permitAll())
+                    .formLogin(AbstractHttpConfigurer::disable)
+                    .logout(AbstractHttpConfigurer::disable)
+                    .httpBasic(AbstractHttpConfigurer::disable)
+                    .csrf(AbstractHttpConfigurer::disable);
+            return http.build();
+        }
+    }
+
+    @Configuration
+    @EnableWebSecurity
+    @ConditionalOnProperty(name = "conductor.enable.ui.serving", havingValue = "false")
+    public static class UiServingDisabledConfig {
+
+        @Bean
+        @Order(98)
+        public SecurityFilterChain uiServingDisabledFilterChain(HttpSecurity http)
+                throws Exception {
             http.authorizeHttpRequests(authz -> authz.anyRequest().permitAll())
                     .formLogin(AbstractHttpConfigurer::disable)
                     .logout(AbstractHttpConfigurer::disable)

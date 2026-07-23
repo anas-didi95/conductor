@@ -22,7 +22,11 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.netflix.conductor.Conductor;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(
@@ -53,8 +57,16 @@ public class StaticResourcesSecurityConfigTest {
 
     @Nested
     @TestPropertySource(
-            properties = "conductor.ui.security.static-resources-protection.enabled=true")
-    class FeatureEnabledTest {
+            properties = {
+                "conductor.ui.security.static-resources-protection.enabled=true",
+                "conductor.ui.security.static-resources-protection.users[0].username=alice",
+                "conductor.ui.security.static-resources-protection.users[0].password=alice-secret",
+                "conductor.ui.security.static-resources-protection.users[0].roles=USER,ADMIN",
+                "conductor.ui.security.static-resources-protection.users[1].username=bob",
+                "conductor.ui.security.static-resources-protection.users[1].password=bob-secret",
+                "conductor.ui.security.static-resources-protection.users[1].roles=USER"
+            })
+    class FeatureEnabledMultiUserTest {
 
         @Autowired private MockMvc mockMvc;
 
@@ -64,13 +76,255 @@ public class StaticResourcesSecurityConfigTest {
         }
 
         @Test
+        void loginPageIsAccessible() throws Exception {
+            mockMvc.perform(get("/login.html")).andExpect(status().isOk());
+        }
+
+        @Test
         void staticRootRedirectsToLogin() throws Exception {
             mockMvc.perform(get("/")).andExpect(status().is3xxRedirection());
         }
 
         @Test
-        void loginPageIsAccessible() throws Exception {
-            mockMvc.perform(get("/login.html")).andExpect(status().isOk());
+        void aliceCanLogin() throws Exception {
+            mockMvc.perform(
+                            post("/login")
+                                    .param("username", "alice")
+                                    .param("password", "alice-secret")
+                                    .with(csrf()))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/"));
+        }
+
+        @Test
+        void bobCanLogin() throws Exception {
+            mockMvc.perform(
+                            post("/login")
+                                    .param("username", "bob")
+                                    .param("password", "bob-secret")
+                                    .with(csrf()))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/"));
+        }
+
+        @Test
+        void alicePasswordDoesNotAuthenticateBob() throws Exception {
+            mockMvc.perform(
+                            post("/login")
+                                    .param("username", "bob")
+                                    .param("password", "alice-secret")
+                                    .with(csrf()))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/login.html?error"));
+        }
+
+        @Test
+        void badCredentialsRedirectToLoginWithError() throws Exception {
+            mockMvc.perform(
+                            post("/login")
+                                    .param("username", "alice")
+                                    .param("password", "wrong")
+                                    .with(csrf()))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/login.html?error"));
+        }
+
+        @Test
+        void logoutInvalidatesSession() throws Exception {
+            mockMvc.perform(
+                            post("/logout")
+                                    .with(
+                                            org.springframework.security.test.web.servlet.request
+                                                    .SecurityMockMvcRequestPostProcessors.user(
+                                                            "alice")
+                                                    .password("alice-secret")
+                                                    .roles("USER"))
+                                    .with(csrf()))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/login.html?logout"))
+                    .andExpect(
+                            header().string(
+                                            "Set-Cookie",
+                                            org.hamcrest.Matchers.containsString("JSESSIONID=;")));
+        }
+
+        @Test
+        void securityHeadersPresentOnAuthenticatedResponse() throws Exception {
+            mockMvc.perform(
+                            get("/").with(
+                                            org.springframework.security.test.web.servlet.request
+                                                    .SecurityMockMvcRequestPostProcessors.user(
+                                                            "alice")
+                                                    .password("alice-secret")
+                                                    .roles("USER")))
+                    .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+                    .andExpect(header().string("X-Frame-Options", "DENY"))
+                    .andExpect(
+                            header().string(
+                                            "Cache-Control",
+                                            "no-cache, no-store, max-age=0, must-revalidate"));
+        }
+    }
+
+    @Nested
+    @TestPropertySource(
+            properties = {
+                "conductor.ui.security.static-resources-protection.enabled=true",
+                "conductor.ui.security.static-resources-protection.users[0].username=alice",
+                "conductor.ui.security.static-resources-protection.users[0].password=$2a$10$pIVv257DcEAVj6yruVSskOWqqOPcQDqYzU/frWGI9NwJHm48DVCu.",
+                "conductor.ui.security.static-resources-protection.users[0].roles=USER"
+            })
+    class HashedPasswordTest {
+
+        @Autowired private MockMvc mockMvc;
+
+        @Test
+        void hashedPasswordLoginSucceeds() throws Exception {
+            mockMvc.perform(
+                            post("/login")
+                                    .param("username", "alice")
+                                    .param("password", "secret")
+                                    .with(csrf()))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/"));
+        }
+    }
+
+    @Nested
+    @TestPropertySource(
+            properties = {
+                "conductor.ui.security.static-resources-protection.enabled=true",
+                "conductor.ui.security.static-resources-protection.csrf-enabled=true",
+                "conductor.ui.security.static-resources-protection.users[0].username=alice",
+                "conductor.ui.security.static-resources-protection.users[0].password=alice-secret",
+                "conductor.ui.security.static-resources-protection.users[0].roles=USER"
+            })
+    class CsrfEnabledTest {
+
+        @Autowired private MockMvc mockMvc;
+
+        @Test
+        void loginWithoutCsrfTokenIsNotSuccessful() throws Exception {
+            // Anonymous user + missing CSRF is rejected. The exact redirect URL
+            // depends on Spring Security's exception handling, but the login must
+            // not succeed (i.e., must not redirect to the default success URL "/").
+            mockMvc.perform(
+                            post("/login")
+                                    .param("username", "alice")
+                                    .param("password", "alice-secret"))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(
+                            result ->
+                                    org.junit.jupiter.api.Assertions.assertNotEquals(
+                                            "/",
+                                            result.getResponse().getRedirectedUrl(),
+                                            "Login should not succeed without CSRF token"));
+        }
+
+        @Test
+        void loginWithCsrfTokenSucceeds() throws Exception {
+            mockMvc.perform(
+                            post("/login")
+                                    .param("username", "alice")
+                                    .param("password", "alice-secret")
+                                    .with(csrf()))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/"));
+        }
+    }
+
+    @Nested
+    @TestPropertySource(
+            properties = {
+                "conductor.ui.security.static-resources-protection.enabled=true",
+                "conductor.ui.security.static-resources-protection.csrf-enabled=false",
+                "conductor.ui.security.static-resources-protection.users[0].username=alice",
+                "conductor.ui.security.static-resources-protection.users[0].password=alice-secret",
+                "conductor.ui.security.static-resources-protection.users[0].roles=USER"
+            })
+    class CsrfDisabledTest {
+
+        @Autowired private MockMvc mockMvc;
+
+        @Test
+        void loginWithoutCsrfTokenSucceeds() throws Exception {
+            mockMvc.perform(
+                            post("/login")
+                                    .param("username", "alice")
+                                    .param("password", "alice-secret"))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/"));
+        }
+    }
+
+    @Nested
+    @TestPropertySource(
+            properties = {
+                "conductor.enable.ui.serving=false",
+                "conductor.ui.security.static-resources-protection.enabled=true",
+                "conductor.ui.security.static-resources-protection.users[0].username=alice",
+                "conductor.ui.security.static-resources-protection.users[0].password=alice-secret",
+                "conductor.ui.security.static-resources-protection.users[0].roles=USER"
+            })
+    class UiServingDisabledTest {
+
+        @Autowired private MockMvc mockMvc;
+
+        @Test
+        void staticRootIsAccessibleWithoutAuth() throws Exception {
+            mockMvc.perform(get("/")).andExpect(status().isOk());
+        }
+
+        @Test
+        void healthEndpointIsAccessible() throws Exception {
+            mockMvc.perform(get("/health")).andExpect(status().isOk());
+        }
+    }
+
+    @Nested
+    @TestPropertySource(
+            properties = "conductor.ui.security.static-resources-protection.enabled=true")
+    class EmptyUsersTest {
+
+        @Autowired private MockMvc mockMvc;
+
+        @Test
+        void noCredentialsAreAccepted() throws Exception {
+            mockMvc.perform(
+                            post("/login")
+                                    .param("username", "admin")
+                                    .param("password", "admin")
+                                    .with(csrf()))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/login.html?error"));
+        }
+    }
+
+    @Nested
+    @TestPropertySource(
+            properties = {
+                "conductor.ui.security.static-resources-protection.enabled=true",
+                "conductor.ui.security.static-resources-protection.users[0].username=alice",
+                "conductor.ui.security.static-resources-protection.users[0].password=alice-secret",
+                "conductor.ui.security.static-resources-protection.users[0].roles=USER"
+            })
+    class LoginPageAssetsArePublicTest {
+
+        @Autowired private MockMvc mockMvc;
+
+        @Test
+        void logoSvgIsAccessible() throws Exception {
+            mockMvc.perform(get("/conductorLogo.svg")).andExpect(status().isOk());
+        }
+
+        @Test
+        void faviconIsAccessible() throws Exception {
+            mockMvc.perform(get("/favicon.ico")).andExpect(status().isOk());
+        }
+
+        @Test
+        void robotsTxtIsAccessible() throws Exception {
+            mockMvc.perform(get("/robots.txt")).andExpect(status().isOk());
         }
     }
 }
