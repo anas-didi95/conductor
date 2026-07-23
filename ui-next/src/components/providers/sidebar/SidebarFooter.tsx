@@ -275,28 +275,83 @@ export const SidebarFooter = ({
               </Box>
             </Box>
           ) : isStaticResourcesProtected ? (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                mt: 4,
-                pt: 2,
-                borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              }}
-            >
-              <Button
-                onClick={() => logOut?.()}
-                startIcon={<LogoutOutlined />}
-                size="small"
-                variant="outlined"
-                sx={{
-                  textTransform: "none",
-                  color: theme.palette.text.secondary,
-                }}
-              >
-                Sign Out
-              </Button>
-            </Box>
+            (() => {
+              const username = featureFlags.getValue(
+                FEATURES.STATIC_RESOURCES_USERNAME,
+              );
+              if (username) {
+                return (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 1.5,
+                      mb: 1,
+                      mt: 4,
+                      p: 2,
+                      pb: 2,
+                      borderRadius: 1,
+                      borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1.5,
+                      }}
+                    >
+                      <Typography
+                        fontSize="0.875rem"
+                        fontWeight={500}
+                        sx={{
+                          color: theme.palette.text.primary,
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {username}
+                      </Typography>
+                    </Box>
+                    <Button
+                      onClick={() => logOut?.()}
+                      startIcon={<LogoutOutlined />}
+                      size="small"
+                      variant="outlined"
+                      sx={{
+                        textTransform: "none",
+                        color: theme.palette.text.secondary,
+                      }}
+                    >
+                      Sign Out
+                    </Button>
+                  </Box>
+                );
+              }
+              return (
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    mt: 4,
+                    pt: 2,
+                    borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  }}
+                >
+                  <Button
+                    onClick={() => logOut?.()}
+                    startIcon={<LogoutOutlined />}
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      textTransform: "none",
+                      color: theme.palette.text.secondary,
+                    }}
+                  >
+                    Sign Out
+                  </Button>
+                </Box>
+              );
+            })()
           ) : null}
 
           {showCopyAlert && (

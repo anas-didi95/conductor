@@ -97,6 +97,9 @@ export const FEATURES = Object.freeze({
   // Driven by the server's conductor.ui.security.static-resources-protection.enabled
   // (injected via /context.js). Gates the OSS logout button in the sidebar footer.
   STATIC_RESOURCES_PROTECTION: "STATIC_RESOURCES_PROTECTION",
+  // Driven by the server — injected into window.conductor via /context.js
+  // when static resources protection is enabled. Contains the logged-in username.
+  STATIC_RESOURCES_USERNAME: "STATIC_RESOURCES_USERNAME",
   AI_CODER_WORKER: "AI_CODER_WORKER",
   AI_CODER_CLOUD_WORKER: "AI_CODER_CLOUD_WORKER",
   TAG_VISIBILITY: "TAG_VISIBILITY",

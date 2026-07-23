@@ -4,16 +4,19 @@ import { Provider as ThemeProvider } from "theme/material/provider";
 import { SidebarFooter } from "./SidebarFooter";
 
 const mockIsEnabled = vi.hoisted(() => vi.fn());
+const mockGetValue = vi.hoisted(() => vi.fn());
 
 vi.mock("utils", () => ({
   FEATURES: {
     PLAYGROUND: "PLAYGROUND",
     STATIC_RESOURCES_PROTECTION: "STATIC_RESOURCES_PROTECTION",
+    STATIC_RESOURCES_USERNAME: "STATIC_RESOURCES_USERNAME",
   },
   featureFlags: {
     isEnabled: (...args: Parameters<typeof mockIsEnabled>) =>
       mockIsEnabled(...args),
-    getValue: vi.fn(),
+    getValue: (...args: Parameters<typeof mockGetValue>) =>
+      mockGetValue(...args),
   },
 }));
 
@@ -119,6 +122,33 @@ describe("SidebarFooter", () => {
       const button = screen.getByRole("button", { name: /sign out/i });
       fireEvent.click(button);
       expect(logOut).toHaveBeenCalledOnce();
+    });
+
+    it("shows username when static resources protection is enabled and username is available", () => {
+      mockIsEnabled.mockImplementation(
+        (feature: string) => feature === "STATIC_RESOURCES_PROTECTION",
+      );
+      mockGetValue.mockImplementation(
+        (feature: string) =>
+          feature === "STATIC_RESOURCES_USERNAME" ? "admin" : undefined,
+      );
+      renderSidebarFooter({ open: true, isAuthenticated: false });
+      expect(screen.getByText("admin")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /sign out/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows only sign-out button when static resources protection is enabled but no username is available", () => {
+      mockIsEnabled.mockImplementation(
+        (feature: string) => feature === "STATIC_RESOURCES_PROTECTION",
+      );
+      mockGetValue.mockReturnValue(undefined);
+      renderSidebarFooter({ open: true, isAuthenticated: false });
+      expect(
+        screen.getByRole("button", { name: /sign out/i }),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("user-avatar")).not.toBeInTheDocument();
     });
   });
 
