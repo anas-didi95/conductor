@@ -14,6 +14,7 @@ import { DoSearchProps } from "types/WorkflowExecution";
 import { RUN_WORKFLOW_URL } from "utils/constants/route";
 import { dateToEpoch } from "utils/date";
 import { commonlyUsedDateTime, getSearchDateTime } from "utils/date";
+import { usePermissions } from "hooks/usePermissions";
 import { usePushHistory } from "utils/hooks/usePushHistory";
 import { tryToJson } from "utils/utils";
 import SplitWorkflowDefinitionButton from "./SplitWorkflowDefinitionButton/SplitWorkflowDefinitionButton";
@@ -143,6 +144,7 @@ export default function WorkflowPanel({
   };
 
   const pushHistory = usePushHistory();
+  const { canExecute } = usePermissions();
 
   const getTableTitle = (resultObj: TaskExecutionResult | undefined) => {
     if (!resultObj?.results) return null;
@@ -162,12 +164,16 @@ export default function WorkflowPanel({
   const defaultActions = (
     <SectionHeaderActions
       buttons={[
-        {
-          label: "Run workflow",
-          color: "secondary",
-          onClick: () => pushHistory(RUN_WORKFLOW_URL),
-          startIcon: <PlayIcon />,
-        },
+        ...(canExecute
+          ? [
+              {
+                label: "Run workflow",
+                color: "secondary",
+                onClick: () => pushHistory(RUN_WORKFLOW_URL),
+                startIcon: <PlayIcon />,
+              },
+            ]
+          : []),
         {
           customButtonElement: <SplitWorkflowDefinitionButton />,
         },

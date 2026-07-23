@@ -8,6 +8,7 @@ export * from "./localstorage";
 export * from "./logger";
 export * from "./logrocket";
 export * from "./object";
+export * from "./permissions";
 export * from "./query";
 export * from "./releaseVersion";
 export * from "./roles";

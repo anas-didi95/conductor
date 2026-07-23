@@ -20,6 +20,7 @@ import {
 } from "components";
 import executionsStyles from "./executionsStyles";
 import { useAuth } from "components/features/auth";
+import { usePermissions } from "../../hooks/usePermissions";
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -57,6 +58,7 @@ export default function BulkActionModule({
   handleError: (error: any) => void;
 }) {
   const { isTrialExpired } = useAuth();
+  const { canExecute } = usePermissions();
   const selectedIds = selectedRows.map((row) => row.workflowId);
   const [results, setResults] = useState<any>(null);
   const [tab, setTab] = useState(0);
@@ -128,47 +130,54 @@ export default function BulkActionModule({
     setTab(newValue);
   };
 
+  const options = [];
+  if (canExecute) {
+    options.push(
+      {
+        label: "Pause",
+        // @ts-ignore
+        handler: () => pauseAction({ body: JSON.stringify(selectedIds) }),
+      },
+      {
+        label: "Resume",
+        // @ts-ignore
+        handler: () => resumeAction({ body: JSON.stringify(selectedIds) }),
+      },
+      {
+        label: "Restart with current definitions",
+        handler: () =>
+          // @ts-ignore
+          restartCurrentAction({ body: JSON.stringify(selectedIds) }),
+      },
+      {
+        label: "Restart with latest definitions",
+        handler: () =>
+          // @ts-ignore
+          restartLatestAction({ body: JSON.stringify(selectedIds) }),
+      },
+      {
+        label: "Retry",
+        // @ts-ignore
+        handler: () => retryAction({ body: JSON.stringify(selectedIds) }),
+      },
+      {
+        label: "Terminate",
+        handler: () =>
+          // @ts-ignore
+          terminateAction({ body: JSON.stringify(selectedIds) }),
+      },
+    );
+  }
+
+  if (options.length === 0) return null;
+
   return (
     <Box style={executionsStyles.actionBar}>
       <Heading level={0}>{selectedRows.length} Workflows Selected.</Heading>
       {/*@ts-ignore*/}
       <DropdownButton
         buttonProps={{ disabled: isTrialExpired }}
-        options={[
-          {
-            label: "Pause",
-            // @ts-ignore
-            handler: () => pauseAction({ body: JSON.stringify(selectedIds) }),
-          },
-          {
-            label: "Resume",
-            // @ts-ignore
-            handler: () => resumeAction({ body: JSON.stringify(selectedIds) }),
-          },
-          {
-            label: "Restart with current definitions",
-            handler: () =>
-              // @ts-ignore
-              restartCurrentAction({ body: JSON.stringify(selectedIds) }),
-          },
-          {
-            label: "Restart with latest definitions",
-            handler: () =>
-              // @ts-ignore
-              restartLatestAction({ body: JSON.stringify(selectedIds) }),
-          },
-          {
-            label: "Retry",
-            // @ts-ignore
-            handler: () => retryAction({ body: JSON.stringify(selectedIds) }),
-          },
-          {
-            label: "Terminate",
-            handler: () =>
-              // @ts-ignore
-              terminateAction({ body: JSON.stringify(selectedIds) }),
-          },
-        ]}
+        options={options}
       >
         Bulk Action
       </DropdownButton>

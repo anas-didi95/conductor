@@ -28,6 +28,7 @@ import SectionContainer from "components/ui/layout/SectionContainer";
 import SectionHeader from "components/layout/SectionHeader";
 import SectionHeaderActions from "components/ui/layout/SectionHeaderActions";
 import { useAuth } from "components/features/auth";
+import { usePermissions } from "hooks/usePermissions";
 import { colors } from "theme/tokens/variables";
 import { PopoverMessage } from "types/Messages";
 import { TagDto } from "types/Tag";
@@ -61,6 +62,7 @@ Browse our templates to get started with easy examples!
 export default function WorkflowDefinitions() {
   const navigate = useNavigate();
   const { isTrialExpired } = useAuth();
+  const { canWrite, canExecute } = usePermissions();
 
   const isPlayground = featureFlags.isEnabled(FEATURES.PLAYGROUND);
   const tagsEnabled = featureFlags.isEnabled(FEATURES.TAG_VISIBILITY);
@@ -265,55 +267,59 @@ export default function WorkflowDefinitions() {
         renderer: (name: string, workflowRowData: WorkflowDef) => {
           return (
             <Box style={{ display: "flex", justifyContent: "space-evenly" }}>
-              <Tooltip title={"Run workflow"}>
-                <IconButton
-                  id={`run-${workflowRowData.name}-btn`}
-                  disabled={isTrialExpired}
-                  onClick={() => {
-                    navigate("/runWorkflow", {
-                      state: {
-                        execution: {
-                          workflowName: workflowRowData.name,
-                          workflowVersion: workflowRowData.version,
-                          input: workflowRowData?.inputParameters
-                            ? Object.fromEntries(
-                                workflowRowData.inputParameters.map((key) => [
-                                  key,
-                                  "",
-                                ]),
-                              )
-                            : {},
+              {canExecute && (
+                <Tooltip title={"Run workflow"}>
+                  <IconButton
+                    id={`run-${workflowRowData.name}-btn`}
+                    disabled={isTrialExpired}
+                    onClick={() => {
+                      navigate("/runWorkflow", {
+                        state: {
+                          execution: {
+                            workflowName: workflowRowData.name,
+                            workflowVersion: workflowRowData.version,
+                            input: workflowRowData?.inputParameters
+                              ? Object.fromEntries(
+                                  workflowRowData.inputParameters.map((key) => [
+                                    key,
+                                    "",
+                                  ]),
+                                )
+                              : {},
+                          },
                         },
-                      },
-                    });
-                  }}
-                  size="small"
-                  sx={{
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  <PlayIcon size={22} />
-                </IconButton>
-              </Tooltip>
+                      });
+                    }}
+                    size="small"
+                    sx={{
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <PlayIcon size={22} />
+                  </IconButton>
+                </Tooltip>
+              )}
 
-              <Tooltip title={"Clone Workflow"}>
-                <IconButton
-                  onClick={() =>
-                    setSelectedWorkflowWithAction({
-                      selectedWorkflow: workflowRowData,
-                      action: "clone",
-                    })
-                  }
-                  disabled={isTrialExpired}
-                  size="small"
-                  sx={{
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  <CopyIcon size={20} />
-                </IconButton>
-              </Tooltip>
-              {tagsEnabled && (
+              {canWrite && (
+                <Tooltip title={"Clone Workflow"}>
+                  <IconButton
+                    onClick={() =>
+                      setSelectedWorkflowWithAction({
+                        selectedWorkflow: workflowRowData,
+                        action: "clone",
+                      })
+                    }
+                    disabled={isTrialExpired}
+                    size="small"
+                    sx={{
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <CopyIcon size={20} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {canWrite && tagsEnabled && (
                 <Tooltip title={"Add/Edit tags"}>
                   <IconButton
                     id={`add-tags-${workflowRowData.name}-btn`}
@@ -333,34 +339,36 @@ export default function WorkflowDefinitions() {
                 </Tooltip>
               )}
 
-              <Tooltip title={"Delete workflow"}>
-                <IconButton
-                  id={`delete-${workflowRowData.name}-btn`}
-                  disabled={isTrialExpired}
-                  onClick={() => {
-                    const selectedData = data?.find((x) => x.name === name);
-                    if (selectedData) {
-                      setConfirmDelete({
-                        confirmDelete: true,
-                        workflowName: selectedData.name,
-                        workflowVersion: selectedData.version,
-                      });
-                    }
-                  }}
-                  size="small"
-                  sx={{
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  <DeleteIcon size={20} />
-                </IconButton>
-              </Tooltip>
+              {canWrite && (
+                <Tooltip title={"Delete workflow"}>
+                  <IconButton
+                    id={`delete-${workflowRowData.name}-btn`}
+                    disabled={isTrialExpired}
+                    onClick={() => {
+                      const selectedData = data?.find((x) => x.name === name);
+                      if (selectedData) {
+                        setConfirmDelete({
+                          confirmDelete: true,
+                          workflowName: selectedData.name,
+                          workflowVersion: selectedData.version,
+                        });
+                      }
+                    }}
+                    size="small"
+                    sx={{
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <DeleteIcon size={20} />
+                  </IconButton>
+                </Tooltip>
+              )}
             </Box>
           );
         },
       },
     ],
-    [data, navigate, isTrialExpired, tagsEnabled],
+    [data, navigate, isTrialExpired, tagsEnabled, canWrite],
   );
 
   const handleFilterChange = useCallback(
@@ -473,12 +481,16 @@ export default function WorkflowDefinitions() {
         actions={
           <SectionHeaderActions
             buttons={[
-              {
-                label: "Run workflow",
-                color: "secondary",
-                onClick: () => pushHistory(RUN_WORKFLOW_URL),
-                startIcon: <PlayIcon />,
-              },
+              ...(canExecute
+                ? [
+                    {
+                      label: "Run workflow",
+                      color: "secondary",
+                      onClick: () => pushHistory(RUN_WORKFLOW_URL),
+                      startIcon: <PlayIcon />,
+                    },
+                  ]
+                : []),
               {
                 customButtonElement: <SplitWorkflowDefinitionButton />,
               },

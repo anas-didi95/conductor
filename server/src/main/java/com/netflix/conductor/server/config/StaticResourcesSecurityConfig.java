@@ -18,6 +18,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -107,7 +108,8 @@ public class StaticResourcesSecurityConfig {
                                 headers.contentTypeOptions();
                                 headers.frameOptions(frameOptions -> frameOptions.deny());
                                 headers.cacheControl();
-                            });
+                            })
+                    .httpBasic(Customizer.withDefaults());
             if (properties.isCsrfEnabled()) {
                 http.csrf(
                         csrf ->

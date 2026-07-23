@@ -34,6 +34,7 @@
       "utils/*": ["./src/utils/*"],
       "commonServices/*": ["./src/commonServices/*"],
       "growthbook/*": ["./src/growthbook/*"],
+      "hooks/*": ["./src/hooks/*"],
       "templates/*": ["./src/templates/*"],
       "testData/*": ["./src/testData/*"]
     },

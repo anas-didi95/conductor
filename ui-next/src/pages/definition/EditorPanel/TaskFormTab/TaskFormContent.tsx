@@ -65,6 +65,7 @@ import {
   useState,
 } from "react";
 import { useAuth } from "components/features/auth";
+import { RequirePermission } from "components/features/permissions";
 import { colors } from "theme/tokens/variables";
 import { FormTaskType, TaskDef, TaskType } from "types";
 import { updateField } from "utils/fieldHelpers";
@@ -557,12 +558,14 @@ const TaskFormContent: FunctionComponent = () => {
                 ))}
               {taskType !== TaskType.JOIN && (
                 <Box pl={3}>
-                  <OpenTestTaskButton
-                    task={task}
-                    tasksList={tasksList}
-                    maxHeight={500}
-                    disabled={isTrialExpired}
-                  />
+                  <RequirePermission permission="EXECUTE">
+                    <OpenTestTaskButton
+                      task={task}
+                      tasksList={tasksList}
+                      maxHeight={500}
+                      disabled={isTrialExpired}
+                    />
+                  </RequirePermission>
                 </Box>
               )}
             </Box>

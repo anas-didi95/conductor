@@ -30,6 +30,7 @@ import { TagDto } from "types/Tag";
 import { NEW_TASK_DEF_URL, TASK_DEF_URL } from "utils/constants/route";
 import { featureFlags, FEATURES } from "utils/flags";
 import { parseErrorResponse } from "utils/helpers";
+import { usePermissions } from "hooks/usePermissions";
 import useCustomPagination from "utils/hooks/useCustomPagination";
 import { usePushHistory } from "utils/hooks/usePushHistory";
 import { logger } from "utils/logger";
@@ -54,6 +55,7 @@ Read more:
 `;
 
 export default function TaskDefinitions() {
+  const { canWrite } = usePermissions();
   const [confirmDeleteName, setConfirmDeleteName] = useState("");
   const [showAddTagDialog, setShowAddTagDialog] = useState(false);
   const [addTagDialogData, setAddTagDialogData] =
@@ -466,12 +468,16 @@ export default function TaskDefinitions() {
         actions={
           <SectionHeaderActions
             buttons={[
-              {
-                id: "define-task-btn",
-                label: "Define task",
-                onClick: () => pushHistory(NEW_TASK_DEF_URL),
-                startIcon: <AddIcon />,
-              },
+                ...(canWrite
+                  ? [
+                      {
+                        id: "define-task-btn",
+                        label: "Define task",
+                        onClick: () => pushHistory(NEW_TASK_DEF_URL),
+                        startIcon: <AddIcon />,
+                      },
+                    ]
+                  : []),
             ]}
           />
         }

@@ -40,7 +40,6 @@ window.conductor = {
   METRICS_ORIGIN_URL: "",
   CUSTOM_LOGO_URL: "",
   MULTITENANCY_TYPE: "user_based",
-  DEFAULT_ROLES: "ADMIN",
 };
 
 // No authentication configuration for OSS

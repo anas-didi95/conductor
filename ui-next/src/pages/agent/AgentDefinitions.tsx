@@ -11,6 +11,7 @@ import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router";
 import { AGENT_DEFINITION_URL } from "utils/constants/route";
 import { useFetch } from "utils/query";
+import { usePermissions } from "hooks/usePermissions";
 import { AgentSummary } from "./types";
 
 const INTRO_CONTENT = `**Agents** are AI agent definitions compiled and run as native Conductor workflows by the embedded AgentSpan runtime.
@@ -18,6 +19,7 @@ const INTRO_CONTENT = `**Agents** are AI agent definitions compiled and run as n
 No agents deployed yet? Use **Create Agent** for a copy-and-run SDK guide.`;
 
 export default function AgentDefinitions() {
+  const { canWrite } = usePermissions();
   const { data, isFetching, refetch } = useFetch<AgentSummary[]>("/agent/list");
   const navigate = useNavigate();
 
@@ -91,15 +93,19 @@ export default function AgentDefinitions() {
         actions={
           <SectionHeaderActions
             buttons={[
-              {
-                label: "Create Agent",
-                color: "secondary",
-                onClick: () =>
-                  navigate(
-                    `${AGENT_DEFINITION_URL.NEW}?language=python&framework=native`,
-                  ),
-                startIcon: <AddIcon />,
-              },
+              ...(canWrite
+                ? [
+                    {
+                      label: "Create Agent",
+                      color: "secondary",
+                      onClick: () =>
+                        navigate(
+                          `${AGENT_DEFINITION_URL.NEW}?language=python&framework=native`,
+                        ),
+                      startIcon: <AddIcon />,
+                    },
+                  ]
+                : []),
             ]}
           />
         }

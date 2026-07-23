@@ -18,6 +18,7 @@ import { useActionWithPath, useTags } from "utils/query";
 import { getErrorMessage } from "utils/utils";
 import ReplaceTagsInput from "components/features/tags/ReplaceTagsInput";
 import { isValidTag } from "components/features/tags/tagUtils";
+import { RequirePermission } from "components/features/permissions";
 
 export type TagDialogProps = {
   open: boolean;
@@ -159,17 +160,19 @@ export default function AddTagDialog({
         >
           Cancel
         </Button>
-        <ActionButton
-          id="save-tag-btn"
-          variant="contained"
-          color="primary"
-          progress={loading}
-          disabled={isSaveDisabled}
-          onClick={() => replaceTags(newTags)}
-          startIcon={<SaveIcon />}
-        >
-          Save
-        </ActionButton>
+        <RequirePermission permission="WRITE">
+          <ActionButton
+            id="save-tag-btn"
+            variant="contained"
+            color="primary"
+            progress={loading}
+            disabled={isSaveDisabled}
+            onClick={() => replaceTags(newTags)}
+            startIcon={<SaveIcon />}
+          >
+            Save
+          </ActionButton>
+        </RequirePermission>
       </DialogActions>
     </Dialog>
   );

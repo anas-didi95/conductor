@@ -21,15 +21,17 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class StaticResourcesProtectionProperties {
 
     private boolean enabled;
+
     /**
      * Whether CSRF protection is enabled for the login form.
      *
      * <p><strong>Default is {@code false}</strong> because the bundled login page is a static HTML
      * file and cannot include a CSRF token without JavaScript. Set to {@code true} if you serve a
-     * custom login page that reads the {@code XSRF-TOKEN} cookie (set by
-     * {@code CookieCsrfTokenRepository}) and sends it back as the {@code X-XSRF-TOKEN} header.
+     * custom login page that reads the {@code XSRF-TOKEN} cookie (set by {@code
+     * CookieCsrfTokenRepository}) and sends it back as the {@code X-XSRF-TOKEN} header.
      */
     private boolean csrfEnabled = false;
+
     private List<UserConfig> users = new ArrayList<>();
 
     public boolean isEnabled() {

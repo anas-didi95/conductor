@@ -20,6 +20,7 @@ import { HTTPMethods } from "types/TaskType";
 import { WorkflowDef } from "types/WorkflowDef";
 import { logger } from "utils/logger";
 import { useActionWithPath, useSharedQueryContext } from "utils/query";
+import { RequirePermission } from "components/features/permissions";
 
 interface ShareWorkflowDialogProps {
   onClose: () => void;
@@ -238,16 +239,18 @@ const ShareWorkflowDialog = ({
             width={"100%"}
             gap={2}
           >
-            <Button
-              startIcon={<Share />}
-              onClick={handleShareWorkflow}
-              variant="contained"
-              color="primary"
-              disabled={!userId && !shareWithEveryone}
-              id={"workflow-sharing-dialog-save-btn"}
-            >
-              Share
-            </Button>
+            <RequirePermission permission="WRITE">
+              <Button
+                startIcon={<Share />}
+                onClick={handleShareWorkflow}
+                variant="contained"
+                color="primary"
+                disabled={!userId && !shareWithEveryone}
+                id={"workflow-sharing-dialog-save-btn"}
+              >
+                Share
+              </Button>
+            </RequirePermission>
           </Grid>
         </Grid>
       </Paper>

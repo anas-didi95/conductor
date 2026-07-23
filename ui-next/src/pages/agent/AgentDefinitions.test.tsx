@@ -3,6 +3,16 @@ import AgentDefinitions from "./AgentDefinitions";
 
 const navigate = vi.fn();
 
+vi.mock("hooks/usePermissions", () => ({
+  usePermissions: () => ({
+    role: "ADMIN",
+    canRead: true,
+    canExecute: true,
+    canWrite: true,
+    isLoading: false,
+  }),
+}));
+
 vi.mock("react-router", () => ({
   useNavigate: () => navigate,
 }));

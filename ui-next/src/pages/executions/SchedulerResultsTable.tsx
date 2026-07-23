@@ -14,6 +14,7 @@ import { colors } from "theme/tokens/variables";
 import { usePushHistory } from "utils/hooks/usePushHistory";
 import { SCHEDULER_DEFINITION_URL } from "utils/constants/route";
 import { useAuth } from "components/features/auth";
+import { usePermissions } from "../../hooks/usePermissions";
 
 const executionFields: LegacyColumn[] = [
   {
@@ -138,6 +139,7 @@ export default function SchedulerResultsTable({
   handleReset,
 }: SchedulerResultsTableProps) {
   const { isTrialExpired } = useAuth();
+  const { canExecute } = usePermissions();
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
   const [toggleCleared, setToggleCleared] = useState(false);
   const pushHistory = usePushHistory();
@@ -213,11 +215,13 @@ export default function SchedulerResultsTable({
           selectableRows
           paginationTotalRows={resultObj?.totalHits}
           contextComponent={
-            <BulkActionModule
-              selectedRows={selectedRows}
-              refetchExecution={refetchExecution}
-              handleError={handleError}
-            />
+            canExecute ? (
+              <BulkActionModule
+                selectedRows={selectedRows}
+                refetchExecution={refetchExecution}
+                handleError={handleError}
+              />
+            ) : null
           }
           onSelectedRowsChange={({ selectedRows }) =>
             setSelectedRows(selectedRows)

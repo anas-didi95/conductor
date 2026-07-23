@@ -7,6 +7,7 @@ import {
 import { ButtonTooltip } from "components/ui/buttons/ButtonTooltip";
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import { UnderlinedText } from "components/ui/UnderlinedText";
+import { usePermissions } from "hooks/usePermissions";
 
 export interface RunWorkflowButtonProps {
   definitionActor: ActorRef<WorkflowDefinitionEvents>;
@@ -17,9 +18,16 @@ export const RunWorkflowButton: FunctionComponent<RunWorkflowButtonProps> = ({
   definitionActor: service,
   disabled,
 }) => {
+  const { canExecute } = usePermissions();
+
   const executeWorkflow = () => {
     service.send({ type: DefinitionMachineEventTypes.HANDLE_SAVE_AND_RUN });
   };
+
+  if (!canExecute) {
+    return null;
+  }
+
   return (
     <ButtonTooltip
       id="head-action-run-btn"

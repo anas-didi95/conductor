@@ -18,6 +18,8 @@ import {
 } from "pages/definition/task/state/types";
 import { FunctionComponent, useMemo } from "react";
 import { useAuth } from "components/features/auth";
+import { usePermissions } from "hooks/usePermissions";
+import { RequirePermission } from "components/features/permissions";
 import { colors } from "theme/tokens/variables";
 import { ActorRef } from "xstate";
 import { OpenTestTaskButton } from "../EditorPanel/TaskFormTab/forms/TestTaskButton/OpenTestTaskButton";
@@ -121,6 +123,7 @@ const TaskDefinitionButtons = ({
   ] = useTaskDefinition(taskDefActor);
 
   const { isTrialExpired } = useAuth();
+  const { canExecute, canWrite } = usePermissions();
 
   const isInForm = useSelector(taskDefActor, (state) =>
     state.matches([
@@ -185,14 +188,16 @@ const TaskDefinitionButtons = ({
             >
               Cancel
             </Button>
-            <Button
-              id="task-confirm-save-btn"
-              onClick={saveTaskDefinition}
-              disabled={couldNotParseJson}
-              startIcon={<SaveIcon />}
-            >
-              {isContinueCreate ? "Confirm Save & Create New" : "Confirm Save"}
-            </Button>
+            <RequirePermission permission="WRITE">
+              <Button
+                id="task-confirm-save-btn"
+                onClick={saveTaskDefinition}
+                disabled={couldNotParseJson}
+                startIcon={<SaveIcon />}
+              >
+                {isContinueCreate ? "Confirm Save & Create New" : "Confirm Save"}
+              </Button>
+            </RequirePermission>
           </Stack>
         ) : (
           <Stack
@@ -201,7 +206,7 @@ const TaskDefinitionButtons = ({
             flexWrap="wrap"
             alignItems={"center"}
           >
-            {!isNewTaskDef && (
+            {!isNewTaskDef && canWrite && (
               <Tooltip
                 title="Delete this task definition. Workflows that depend on this task will not complete."
                 arrow
@@ -237,34 +242,40 @@ const TaskDefinitionButtons = ({
               Download
             </Button>
             <Box pr={2}>
-              <OpenTestTaskButton
-                task={taskDefinition}
-                maxHeight={500}
-                disabled={isNewTaskDef || isTrialExpired}
-                showForm={false}
-              />
+              <RequirePermission permission="EXECUTE">
+                <OpenTestTaskButton
+                  task={taskDefinition}
+                  maxHeight={500}
+                  disabled={isNewTaskDef || isTrialExpired}
+                  showForm={false}
+                />
+              </RequirePermission>
             </Box>
 
             {isNewTaskDef ? (
-              <SplitButton
-                startIcon={<SaveIcon />}
-                id="task-save-btn"
-                options={saveSplitButtonOptions}
-                primaryOnClick={() => setSaveConfirmationOpen(false)}
-                tooltip="Save this definition"
-                data-testid="task-definition-save-button"
-                disabled={isTrialExpired}
-              >
-                Save
-              </SplitButton>
+              <RequirePermission permission="WRITE">
+                <SplitButton
+                  startIcon={<SaveIcon />}
+                  id="task-save-btn"
+                  options={saveSplitButtonOptions}
+                  primaryOnClick={() => setSaveConfirmationOpen(false)}
+                  tooltip="Save this definition"
+                  data-testid="task-definition-save-button"
+                  disabled={isTrialExpired}
+                >
+                  Save
+                </SplitButton>
+              </RequirePermission>
             ) : (
-              <SaveResetButton
-                id="task-save-btn"
-                onClick={() => setSaveConfirmationOpen(false)}
-                startIcon={<SaveIcon />}
-              >
-                Save
-              </SaveResetButton>
+              <RequirePermission permission="WRITE">
+                <SaveResetButton
+                  id="task-save-btn"
+                  onClick={() => setSaveConfirmationOpen(false)}
+                  startIcon={<SaveIcon />}
+                >
+                  Save
+                </SaveResetButton>
+              </RequirePermission>
             )}
           </Stack>
         )}
