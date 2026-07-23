@@ -4,175 +4,210 @@ Instructions for AI coding agents working on the Conductor codebase.
 
 ## Project Overview
 
-Conductor is an open-source, distributed workflow orchestration engine designed for microservices.
-It uses a pluggable architecture with interface-based abstractions for persistence, queuing, and indexing.
-The project is built with Java 21 and uses Gradle as the build system.
+Conductor is an open-source, distributed workflow orchestration engine. It uses a pluggable architecture with interface-based abstractions for persistence, queuing, and indexing. Built with Java 21, Gradle, and Spring Boot 3.3.x.
 
 ## Setup Commands
 
 | Command | Description |
 |---------|-------------|
-| `./gradlew build` | Build the entire project |
-| `./gradlew test` | Run all tests |
-| `./gradlew :module-name:test` | Run tests for a specific module |
-| `./gradlew spotlessApply` | Apply code formatting |
+| `./gradlew build` | Build all modules (CI excludes test-harness tests; see below) |
+| `./gradlew test` | Run all unit tests |
+| `./gradlew :conductor-<module>:test` | Run tests for a specific module (e.g. `:conductor-core:test`) |
+| `./gradlew spotlessApply` | Apply code formatting — required after every code change |
 | `./gradlew clean build` | Clean and rebuild |
+| `./gradlew :conductor-server:bootRun` | Start the dev server (listens on `:8080`) |
+| `./gradlew jacocoAggregatedReport` | Aggregate JaCoCo coverage (run `build` first) |
 
-> **Important**: Always run `./gradlew spotlessApply` after making code changes to ensure consistent formatting.
+> **Always run `./gradlew spotlessApply` before committing.**
 
-## Java Version References
+### Running the server
 
-**Never link to a specific Java distribution** (e.g., Adoptium, Temurin, OpenJDK.org, Amazon Corretto) in docs, READMEs, or comments. Just say "Java 21+" and let users install it however they prefer.
+```shell
+cd server && ../gradlew bootRun
+# http://localhost:8080, swagger at /swagger-ui/index.html
+```
 
-## Code Style
+Config via env var `CONDUCTOR_CONFIG_FILE` or Spring properties. See `docker/server/config/` for example configs (Redis+ES7 default, Postgres, MySQL, etc.).
 
-- Use the Spotless plugin for uniform code formatting—always run before committing
-- Conductor is pluggable: when introducing new concepts, always use an **interface-based approach**
-- DAO interfaces **MUST** be defined in the `core` module
-- Implementation classes go in their respective persistence modules (e.g., `postgres-persistence`, `redis-persistence`)
-- Follow existing patterns in the codebase for consistency
-- Do not use emojis such as ✅ in the code, logs, or comments.  Keep comments professionals
-- When adding new logic, comment the algorithm, design etc.   
+### Indexing backend build-time selection
 
-## Architecture Guidelines
+The server module resolves the indexing backend at **build time** to avoid Lucene conflicts between ES and OpenSearch:
 
-### Module Structure
+```shell
+./gradlew build -PindexingBackend=os3
+# Accepted values: elasticsearch|es7 (default), elasticsearch8|es8, opensearch|os, opensearch3|os3
+```
 
-- **core**: Contains interfaces, domain models, and core business logic
-- **persistence modules**: Implementations of DAO interfaces (postgres, redis, mysql, etc.)
-- **server**: Spring Boot application that brings everything together
-- **client**: SDK for interacting with Conductor
-- **ui**: React-based user interface
+## Module Architecture
 
-### Key Patterns
+All subprojects are prefixed with `conductor-` (enforced by `settings.gradle`). Use this prefix in Gradle task references.
 
-- DAOs are defined as interfaces in `core` and implemented in persistence modules
-- System tasks extend `WorkflowSystemTask` and are registered via Spring
-- Worker tasks use the `@WorkerTask` annotation for automatic discovery
-- Configuration is primarily done through Spring properties
+### Core modules
+
+| Module | Path | Role |
+|--------|------|------|
+| `conductor-core` | `core/` | Interfaces, domain models, core business logic, GraalVM script engine |
+| `conductor-common` | `common/` | Shared metadata and model classes |
+| `conductor-rest` | `rest/` | REST controllers (`com.netflix.conductor.rest.controllers`) |
+| `conductor-server` | `server/` | Spring Boot app — main class `com.netflix.conductor.Conductor` |
+| `conductor-grpc` | `grpc/` | Protobuf definitions + gRPC stubs (generated code) |
+| `conductor-grpc-server` | `grpc-server/` | gRPC server implementation |
+| `conductor-grpc-client` | `grpc-client/` | gRPC client |
+
+### Persistence modules
+
+DAO interfaces live in `core`. Implementations go in their respective module (e.g. `postgres-persistence`, `redis-persistence`).
+
+| Module | Path |
+|--------|------|
+| `conductor-redis-persistence` | `redis-persistence/` |
+| `conductor-postgres-persistence` | `postgres-persistence/` |
+| `conductor-mysql-persistence` | `mysql-persistence/` |
+| `conductor-cassandra-persistence` | `cassandra-persistence/` |
+| `conductor-sqlite-persistence` | `sqlite-persistence/` |
+| `conductor-es7-persistence` | `es7-persistence/` |
+| `conductor-es8-persistence` | `es8-persistence/` |
+| `conductor-os-persistence` / `-v2` / `-v3` | `os-persistence/`, `os-persistence-v2/`, `os-persistence-v3/` |
+
+### Scheduler submodules
+
+Scheduler modules are nested under `scheduler/` but named as top-level Gradle modules:
+
+```groovy
+project(':conductor-scheduler-core').projectDir = file('scheduler/core')
+project(':conductor-scheduler-postgres-persistence').projectDir = file('scheduler/postgres-persistence')
+// etc.
+```
+
+### Other modules
+
+- `conductor-ai` (`ai/`) — AI/LLM integration tasks
+- `conductor-agentspan` (`agentspan/`) — Embedded AgentSpan runtime (activated via `conductor.integrations.ai.enabled=true`)
+- `conductor-annotations` + `conductor-annotations-processor` — Protogen codegen (converts annotated POJOs to `.proto`)
+- `conductor-test-harness` (`test-harness/`) — Integration tests using TestContainers
+- `conductor-e2e` (`e2e/`) — End-to-end tests
+- `conductor-client` modules in `conductor-clients/` — polyglot client wrappers (ignored by CI: `paths-ignore: ["conductor-clients/**"]`)
+- `ui-next/` — React-based UI (pnpm, Vite, Vitest, Playwright)
 
 ## Testing
 
-- **Avoid mocks**: Use real implementations whenever possible
-- **Test actual behavior**: Tests must verify real implementation logic, not duplicate it
-- **Use Testcontainers**: For database, cache, and other external dependencies
-- **Cover concurrency**: Ensure multi-threading scenarios are tested
-- **Run tests before submitting**: `./gradlew test` must pass
+### Testing philosophy
 
-### Test Locations
+- **Avoid mocks.** Use real implementations and TestContainers where possible.
+- Tests use JUnit 5 platform. `core` and `test-harness` also use Spock (Groovy).
+- TestContainers Docker API version is forced to 1.44 in CI via `~/.docker-java.properties`.
 
-- Unit tests: `src/test/java` in each module
-- Integration tests: `test-harness` module and `*-integration-test` modules
-- E2E tests: `e2e` module
+### CI test execution order and quirks
 
-## PR Guidelines
+CI runs three separate jobs:
+1. **`build`** — compiles everything (`./gradlew build -x :conductor-test-harness:test -x test`)
+2. **`unit-test`** — runs `./gradlew test -x :conductor-test-harness:test`
+3. **`test-harness`** — runs `./gradlew :conductor-test-harness:test`
 
-- Submit PRs against the `main` branch
-- Use clear, descriptive commit messages
-- Run `./gradlew spotlessApply` and `./gradlew test` before pushing
-- Add or update tests for any code changes
-- Keep PRs focused—one logical change per PR
+On PRs, heavy persistence tests (cassandra, es6/7/8, mysql, opensearch) are **skipped** unless their source changed (detected by `dorny/paths-filter`).
 
-## Dependency Pinning
+### Running tests locally
 
-Some dependencies have hard version constraints that **must not be auto-bumped**. These are marked with:
+```shell
+# Single module (fastest feedback)
+./gradlew :conductor-core:test
 
-```groovy
-// PINNED (#964): <reason>
+# All unit tests except test-harness
+./gradlew test -x :conductor-test-harness:test
+
+# Integration tests (requires Docker)
+./gradlew :conductor-test-harness:test
+
+# File-storage backend integration tests (tagged, requires Docker)
+./gradlew :conductor-test-harness:fileStorageIntegrationTest
+
+# E2E functional tests against embedded server
+./gradlew :conductor-test-harness:functionalTest
 ```
 
-The issue number links back to https://github.com/conductor-oss/conductor/issues/964, which documents the full audit and upgrade path for each constraint.
+The `functionalTest` task runs e2e tests via a dedicated source set with separate classpath config. It excludes one heavy load test (`SetVariableTests.testAllFast`).
 
-### What PINNED means
+### UI tests
 
-`// PINNED (#964):` means the version is intentionally locked and upgrading it without understanding the constraint will break the build or cause a runtime failure. Do not bump a PINNED dependency as part of routine dependency updates or refactoring.
+```shell
+cd ui-next
+pnpm install --frozen-lockfile
+pnpm typecheck      # tsc --noEmit
+pnpm test           # vitest
+pnpm test:e2e       # Playwright (requires server)
+pnpm build          # vite build
+```
 
-### Current hard pins
+## Code Style
+
+- Spotless with Google Java Format (AOSP variant), `removeUnusedImports`, custom import order: `java`, `javax`, `org`, `com.netflix`, ``, `\#com.netflix`, `\#`
+- License header is enforced by Spotless (see `licenseheader.txt`)
+- Lombok 1.18.42 used throughout (`@Slf4j`, `@Data`, `@Builder`, etc.)
+- No emojis in code, logs, or comments
+
+### Pre-commit hook
+
+```shell
+ln -s ../../hooks/pre-commit .git/hooks/pre-commit
+```
+
+Runs `spotlessApply` and re-stages modified files.
+
+## Dependency Management
+
+### PINNED dependencies
+
+Some deps have hard version constraints marked with `// PINNED (#964): <reason>`. **Do not bump without reading the pinned comment and #964.** Key pins:
 
 | Dependency | Pinned at | Why |
 |---|---|---|
-| `com.google.protobuf:protobuf-java` | `3.x` | 4.x + GraalVM polyglot 25.x causes Gradle to require `polyglot4`, which does not exist on Maven Central |
-| `com.google.protobuf:protoc` | `3.25.5` | Must match `grpc-protobuf:1.73.0`, which depends on protobuf-java 3.x |
-| `org.graalvm.*` (all 5 artifacts) | same version | All must share one version — mixing causes a `"polyglot version X not compatible with Truffle Y"` runtime error |
-| `redis.clients:jedis` in `redis-concurrency-limit` | `3.6.0` | `revJedis` (6.0.0) does not work with Spring Data Redis in that module |
-| `org.codehaus.jettison:jettison` | `strictly 1.5.4` | Gradle `strictly` constraint — no higher version has been validated |
-| `org.conductoross:conductor-client` in `test-harness` | `5.0.1` | Fat JAR classpath conflict with conductor-common; resolved via a stripped JAR task |
-| `org.awaitility:awaitility` in functional tests | `4.x` | e2e tests call `pollInterval(Duration)` added in Awaitility 4.0 |
+| `protobuf-java` | 3.x | 4.x + GraalVM polyglot 25.x breaks Gradle resolution |
+| `protoc` | 3.25.5 | Must match protobuf-java 3.x used by grpc-protobuf |
+| All `org.graalvm.*` | same version (`revGraalVM`) | Mixing versions causes polyglot/Truffle runtime errors |
+| `conductor-client` in test-harness | 5.0.1 | Fat JAR classpath conflict; resolved via a stripped JAR task |
+| `awaitility` in functionalTest | 4.2.0 | e2e tests use `pollInterval(Duration)` added in 4.x (3.x in main scope) |
+| `jettison` | strictly 1.5.4 | No validated higher version |
 
-### Before bumping a PINNED dependency
-
-1. Read the comment carefully — it will name the incompatibility and often link to an upstream issue.
-2. Check whether the upstream blocker has been resolved (e.g., new grpc-java release, new GraalVM release).
-3. Test locally: `./gradlew clean build` plus `./gradlew test` in the affected modules.
-4. If bumping GraalVM, bump **all five** `org.graalvm.*` artifacts together using `revGraalVM` in `dependencies.gradle`.
-5. Update or remove the `// PINNED` comment once the constraint is lifted.
-
-### PINNED vs. version floors
-
-Hard caps use `// PINNED (#964):`. Version floors — where a minimum is enforced but higher versions are always welcome — use one of two lowercase prefixes instead:
+### Version floor dependencies
 
 ```groovy
-// Security: CVE-2025-12183 — lz4-java minimum patched version
-// Compat: commons-lang3 3.18.0+ required by Testcontainers/commons-compress
+// Security: <CVE> — <reason>
+// Compat: <reason>
 ```
 
-- `// Security:` — minimum set to address a CVE or known vulnerability
-- `// Compat:` — minimum set for compatibility with another library or framework
+These can be freely bumped by Dependabot.
 
-These are grep-able (`grep "// Security:" **/*.gradle`, `grep "// Compat:" **/*.gradle`) but read as normal developer comments. Dependabot may raise these freely; no special review needed beyond the usual.
+### Other constraints (in `build.gradle`)
 
-## Security Considerations
+- Jackson: all modules aligned to 2.17.0
+- Tomcat: 10.1.54
+- GraalVM all artifacts (5!) must share `revGraalVM` from `dependencies.gradle`
 
-- Never commit secrets, API keys, or credentials
-- Be cautious with external dependencies—prefer well-maintained libraries
-- Follow secure coding practices for input validation and error handling
-- Review [SECURITY.md](SECURITY.md) for vulnerability reporting procedures
+### Protobuf codegen
+
+`conductor-grpc` generates Java code from `.proto` files. The `protogen` annotation processor in `conductor-annotations-processor` converts annotated POJOs to `.proto`. Build order dependency:
+
+```
+compileJava.dependsOn(':conductor-common:protogen')
+```
+
+## Java Version References
+
+**Never link to a specific Java distribution** (Adoptium, Temurin, etc.) in docs or comments. Just say "Java 21+".
 
 ## Writing Documentation
 
-Documentation in this project is **derived from source**, not composed from memory. Open the source first, read what's there, then write the doc from what you find. The source is the spec; the doc is a rendering of it.
+Documentation is **derived from source**, not composed from memory. Open the source first, read what's there, then write.
 
-This matters because plausible-looking docs can be silently wrong. Concretely: a curl equivalent for `conductor workflow start --sync` was once written as `POST /api/workflow/{name}/run` — an endpoint that does not exist. Reading the controller first would have given the correct path immediately.
-
-### Workflow for each content type
-
-**REST API endpoint or curl example**
-1. Open the relevant controller: `rest/src/main/java/com/netflix/conductor/rest/controllers/`
-2. Find the method using its `@PostMapping`/`@GetMapping`/etc. annotation — copy the path literally.
-3. Read the method signature for query params, path variables, and request body type.
-4. Write the curl command from what you just read.
-
-**CLI command or flag**
-1. Open `cmd/*.go` in `conductor-cli` (separate repo).
-2. Find the `cobra.Command` definition for the subcommand.
-3. Read the `Flags()` declarations for exact flag names, types, and defaults.
-4. Write the example from what you just read.
-
-**SDK code example (Python, JS, Java, Go)**
-1. Open the relevant SDK source file.
-2. Find the method signature and required parameters.
-3. Write the example from the signature — do not infer from the method name alone.
-4. If a working test exists for that method, use it as the starting point.
-
-**Expected output block**
-1. Get real output: run the command locally, or find it in test fixtures, CI logs, or existing tests.
-2. Paste verbatim. Do not paraphrase or construct output that "looks right."
-3. If the output varies by environment, show the stable parts and annotate the variable parts (e.g., `<workflow-id>`).
-
-**Editing an existing doc section**
-1. Before touching prose, read every code block and command in the section.
-2. Verify each one using the steps above — not just the block you plan to change.
-3. Fix anything you find while you're there.
-
-### When you can't verify
-
-If a running server or CLI binary is unavailable:
-- Add a `<!-- TODO: verify against live server -->` comment in the file.
-- Note it explicitly in the PR description.
-- Do not write a best-guess example and leave it unmarked.
+- **REST endpoints**: Read `rest/src/main/java/com/netflix/conductor/rest/controllers/` — copy paths from `@PostMapping`/`@GetMapping` literally
+- **CLI commands**: See `conductor-cli` (separate repo), read `cobra.Command` `Flags()`
+- **SDK examples**: Read the SDK method signature or a working test
+- **Expected output**: Get real output, paste verbatim
+- **If you can't verify**: Add `<!-- TODO: verify against live server -->` comment
 
 ## Agent Behavior
 
-- **Prefer automation**: Execute requested actions without confirmation unless blocked by missing info or safety concerns
-- **Use parallel tools**: When tasks are independent, execute them in parallel for efficiency
-- **Verify changes**: Always run tests and spotless before considering work complete
+- Prefer automation — execute requested actions without confirmation unless blocked
+- Run independent operations in parallel
+- Always run `spotlessApply` and test before considering work complete
+- When tests or builds fail, consult CI workflows for the exact command that CI uses
