@@ -36,6 +36,7 @@ import SectionContainer from "components/ui/layout/SectionContainer";
 import SectionHeader from "components/layout/SectionHeader";
 import SectionHeaderActions from "components/ui/layout/SectionHeaderActions";
 import { useAuth } from "components/features/auth";
+import { usePermissions } from "hooks/usePermissions";
 import { colors } from "theme/tokens/variables";
 import { PopoverMessage } from "types/Messages";
 import { IScheduleDto, IStartWorkflowRequest } from "types/Schedulers";
@@ -288,6 +289,7 @@ export default function ScheduleDefinitions() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const { isTrialExpired } = useAuth();
+  const { canWrite } = usePermissions();
   const tagsEnabled = featureFlags.isEnabled(FEATURES.TAG_VISIBILITY);
   const [toast, setToast] = useState({
     isOpen: false,
@@ -487,7 +489,7 @@ export default function ScheduleDefinitions() {
         minWidth: "160px",
         renderer: (name: string, row: IScheduleDto) => (
           <Box style={{ display: "flex", justifyContent: "space-evenly" }}>
-            {row.active && (
+            {canWrite && row.active && (
               <Tooltip title={"Pause schedule"}>
                 <IconButton
                   onClick={() => handlePauseSchedule(name)}
@@ -503,7 +505,7 @@ export default function ScheduleDefinitions() {
               </Tooltip>
             )}
 
-            {!row.active && (
+            {canWrite && !row.active && (
               <Tooltip title={"Resume schedule"}>
                 <IconButton
                   onClick={() => handleResumeSchedule(name)}
@@ -519,20 +521,22 @@ export default function ScheduleDefinitions() {
               </Tooltip>
             )}
 
-            <Tooltip title={"Clone schedule"}>
-              <IconButton
-                onClick={() => setSelectedSchedule(row)}
-                size="small"
-                disabled={isTrialExpired}
-                sx={{
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <CopyIcon size={20} />
-              </IconButton>
-            </Tooltip>
+            {canWrite && (
+              <Tooltip title={"Clone schedule"}>
+                <IconButton
+                  onClick={() => setSelectedSchedule(row)}
+                  size="small"
+                  disabled={isTrialExpired}
+                  sx={{
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <CopyIcon size={20} />
+                </IconButton>
+              </Tooltip>
+            )}
 
-            {tagsEnabled && (
+            {canWrite && tagsEnabled && (
               <Tooltip title={"Add/Edit tags"}>
                 <IconButton
                   disabled={isTrialExpired}
@@ -550,23 +554,25 @@ export default function ScheduleDefinitions() {
               </Tooltip>
             )}
 
-            <Tooltip title={"Delete schedule"}>
-              <IconButton
-                disabled={isTrialExpired}
-                onClick={() => deleteSchedule(name)}
-                size="small"
-                sx={{
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <DeleteIcon size={20} />
-              </IconButton>
-            </Tooltip>
+            {canWrite && (
+              <Tooltip title={"Delete schedule"}>
+                <IconButton
+                  disabled={isTrialExpired}
+                  onClick={() => deleteSchedule(name)}
+                  size="small"
+                  sx={{
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <DeleteIcon size={20} />
+                </IconButton>
+              </Tooltip>
+            )}
           </Box>
         ),
       },
     ],
-    [handlePauseSchedule, handleResumeSchedule, isTrialExpired, tagsEnabled],
+    [handlePauseSchedule, handleResumeSchedule, isTrialExpired, tagsEnabled, canWrite],
   );
 
   const handleClickDefineSchedule = () => {
@@ -720,11 +726,15 @@ export default function ScheduleDefinitions() {
         actions={
           <SectionHeaderActions
             buttons={[
-              {
-                label: "Define schedule",
-                onClick: () => pushHistory(SCHEDULER_DEFINITION_URL.NEW),
-                startIcon: <AddIcon />,
-              },
+              ...(canWrite
+                ? [
+                    {
+                      label: "Define schedule",
+                      onClick: () => pushHistory(SCHEDULER_DEFINITION_URL.NEW),
+                      startIcon: <AddIcon />,
+                    },
+                  ]
+                : []),
             ]}
           />
         }

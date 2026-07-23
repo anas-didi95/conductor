@@ -15,6 +15,8 @@ window.conductor = {
   TASK_INDEXING: false,
   SHOW_EVENT_MONITOR: true,
   ENABLE_DARK_MODE_TOGGLE: true,
+  // Static resources protection (server-side login) — disabled for default OSS
+  STATIC_RESOURCES_PROTECTION: false,
 
   // Enterprise Features - DISABLED for OSS
   TAG_VISIBILITY: false,
@@ -40,7 +42,6 @@ window.conductor = {
   METRICS_ORIGIN_URL: "",
   CUSTOM_LOGO_URL: "",
   MULTITENANCY_TYPE: "user_based",
-  DEFAULT_ROLES: "ADMIN",
 };
 
 // No authentication configuration for OSS

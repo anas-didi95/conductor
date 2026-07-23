@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { ImportBPNFileDialog } from "./ImportBPNFileDialog";
 import { featureFlags, FEATURES } from "utils/flags";
 import { removeCopyFromStorage } from "pages/runWorkflow/runWorkflowUtils";
+import { usePermissions } from "hooks/usePermissions";
 
 const SplitWorkflowDefinitionButton = ({
   disabled,
@@ -15,11 +16,11 @@ const SplitWorkflowDefinitionButton = ({
 }) => {
   const pushHistory = usePushHistory();
   const { isTrialExpired } = useAuth();
+  const { canWrite } = usePermissions();
   const [openBPMNModal, setOpenBPMNModal] = useState(false);
   const isImportBpmnHidden = featureFlags.isEnabled(FEATURES.HIDE_IMPORT_BPMN);
 
   const clearNewWorkflowStorage = () => {
-    // Clear any existing new workflow data from localStorage
     removeCopyFromStorage({
       workflowName: "newWorkflowDef",
       currentVersion: undefined,
@@ -45,6 +46,10 @@ const SplitWorkflowDefinitionButton = ({
     }
     return options;
   }, [isImportBpmnHidden, pushHistory]);
+
+  if (!canWrite) {
+    return null;
+  }
 
   return (
     <>

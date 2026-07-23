@@ -44,6 +44,7 @@ import { SummaryTask } from "./SummaryTask";
 import { dropdownIcon } from "./dropdownIcon";
 import { SecondaryActions } from "./SecondaryActions";
 import { getTaskOutputForDisplay } from "./taskOutput";
+import { RequirePermission } from "components/features/permissions/RequirePermission";
 
 const executionTaskHeaderContainerQuery = {
   small: { maxWidth: 699 },
@@ -102,10 +103,12 @@ export const RightPanel: FunctionComponent<RightPanelProps> = ({
       [TaskStatus.IN_PROGRESS, TaskStatus.SCHEDULED].includes(
         selectedTask.status,
       ) ? (
-        <UpdateTaskStatusForm
-          onConfirm={onChangeTaskStatus!}
-          key={selectedTask?.referenceTaskName}
-        />
+        <RequirePermission permission="EXECUTE">
+          <UpdateTaskStatusForm
+            onConfirm={onChangeTaskStatus!}
+            key={selectedTask?.referenceTaskName}
+          />
+        </RequirePermission>
       ) : null,
     [selectedTask, onChangeTaskStatus],
   );
@@ -113,16 +116,18 @@ export const RightPanel: FunctionComponent<RightPanelProps> = ({
   const maybeRerunTask = useMemo(() => {
     if (workflowStatus !== WorkflowExecutionStatus.PAUSED) {
       return (
-        <Box mt={2}>
-          <Button
-            startIcon={<ArrowCounterClockwise />}
-            size="small"
-            onClick={handleReRunRequest}
-            id="re-run-task-btn"
-          >
-            Re-Run from Task
-          </Button>
-        </Box>
+        <RequirePermission permission="EXECUTE">
+          <Box mt={2}>
+            <Button
+              startIcon={<ArrowCounterClockwise />}
+              size="small"
+              onClick={handleReRunRequest}
+              id="re-run-task-btn"
+            >
+              Re-Run from Task
+            </Button>
+          </Box>
+        </RequirePermission>
       );
     }
     return null;

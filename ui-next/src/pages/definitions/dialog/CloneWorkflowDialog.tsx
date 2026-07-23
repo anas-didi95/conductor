@@ -27,6 +27,7 @@ import {
   useAuthHeaders,
   useSharedQueryContext,
 } from "utils/query";
+import { RequirePermission } from "components/features/permissions";
 import { getSequentiallySuffix } from "utils/strings";
 import { getUniqueWorkflowsWithVersions } from "utils/workflow";
 import * as yup from "yup";
@@ -198,20 +199,22 @@ const CloneWorkflowDialog = ({
         >
           Cancel
         </Button>
-        <ActionButton
-          id="confirm-clone-btn"
-          variant="contained"
-          color="primary"
-          sx={{
-            fontSize: 14,
-            lineHeight: 1.5,
-          }}
-          onClick={() => handleSubmit(onSubmit)()}
-          disabled={!isValid}
-          progress={createWorkflowAction.isLoading}
-        >
-          Clone
-        </ActionButton>
+        <RequirePermission permission="WRITE">
+          <ActionButton
+            id="confirm-clone-btn"
+            variant="contained"
+            color="primary"
+            sx={{
+              fontSize: 14,
+              lineHeight: 1.5,
+            }}
+            onClick={() => handleSubmit(onSubmit)()}
+            disabled={!isValid}
+            progress={createWorkflowAction.isLoading}
+          >
+            Clone
+          </ActionButton>
+        </RequirePermission>
       </DialogActions>
     </Dialog>
   );

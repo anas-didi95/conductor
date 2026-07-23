@@ -31,6 +31,7 @@
 
 import { App } from "components/App";
 import DefaultAuthGuard from "components/features/auth/AuthGuard";
+import { RequireRoutePermission } from "components/features/permissions";
 import ApiReferencePage from "pages/apiDocs/ApiReferencePage";
 import { CreatorFlags } from "pages/creatorFlags/CreatorFlags";
 import { TaskDefinition } from "pages/definition/task";
@@ -278,9 +279,14 @@ export const getRoutes = (): RouteObject[] => {
         },
 
         // Special route for runWorkflow (has special AuthGuard behavior)
+        // VIEWER users are redirected away since RunWorkflow is a pure EXECUTE action
         {
           path: RUN_WORKFLOW_URL,
-          element: <AuthGuard runWorkflow={true} />,
+          element: (
+            <RequireRoutePermission permission="EXECUTE" redirectTo="/executions">
+              <AuthGuard runWorkflow={true} />
+            </RequireRoutePermission>
+          ),
         },
 
         // Public routes from plugins (login pages, OAuth callbacks, etc.)

@@ -6,13 +6,15 @@ import MuiIconButton from "components/ui/buttons/MuiIconButton";
 import { usePushHistory } from "utils/hooks/usePushHistory";
 import { RUN_WORKFLOW_URL } from "utils/constants/route";
 import { useAuth } from "components/features/auth";
+import { usePermissions } from "../../../hooks/usePermissions";
 
 const RunWorkflowButton = ({ open }: { open: boolean }) => {
   const pushHistory = usePushHistory();
   const { isTrialExpired } = useAuth();
+  const { canExecute } = usePermissions();
 
   if (!open) {
-    return (
+    return canExecute ? (
       <Box
         sx={{
           display: "flex",
@@ -40,10 +42,10 @@ const RunWorkflowButton = ({ open }: { open: boolean }) => {
           <PlayIcon />
         </MuiIconButton>
       </Box>
-    );
+    ) : null;
   }
 
-  return (
+  return canExecute ? (
     <Box sx={{ display: "flex", justifyContent: "center", my: 2 }}>
       <MuiButton
         startIcon={<PlayIcon />}
@@ -53,7 +55,7 @@ const RunWorkflowButton = ({ open }: { open: boolean }) => {
         Run Workflow
       </MuiButton>
     </Box>
-  );
+  ) : null;
 };
 
 export default RunWorkflowButton;

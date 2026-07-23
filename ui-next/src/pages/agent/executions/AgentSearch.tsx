@@ -14,6 +14,7 @@ import { DoSearchProps } from "types/WorkflowExecution";
 import { RUN_AGENT_URL } from "utils/constants/route";
 import { dateToEpoch } from "utils/date";
 import { commonlyUsedDateTime, getSearchDateTime } from "utils/date";
+import { usePermissions } from "hooks/usePermissions";
 import { usePushHistory } from "utils/hooks/usePushHistory";
 import { tryToJson } from "utils/utils";
 import AdvancedSearch from "./workflowSearchComponents/AdvancedSearch";
@@ -120,6 +121,7 @@ export default function AgentPanel() {
   };
 
   const pushHistory = usePushHistory();
+  const { canExecute } = usePermissions();
 
   const getTableTitle = (resultObj: TaskExecutionResult) => {
     const { results, totalHits } = resultObj;
@@ -146,12 +148,16 @@ export default function AgentPanel() {
         actions={
           <SectionHeaderActions
             buttons={[
-              {
-                label: "Run agent",
-                color: "secondary",
-                onClick: () => pushHistory(RUN_AGENT_URL),
-                startIcon: <PlayIcon />,
-              },
+              ...(canExecute
+                ? [
+                    {
+                      label: "Run agent",
+                      color: "secondary",
+                      onClick: () => pushHistory(RUN_AGENT_URL),
+                      startIcon: <PlayIcon />,
+                    },
+                  ]
+                : []),
             ]}
           />
         }

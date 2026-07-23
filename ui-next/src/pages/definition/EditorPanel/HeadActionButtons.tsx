@@ -27,6 +27,8 @@ import { SnackbarMessage } from "components/ui/SnackbarMessage";
 import { HOT_KEYS_WORKFLOW_DEFINITION } from "utils/constants/common";
 import { UnderlinedText } from "components/ui/UnderlinedText";
 import { useAuth } from "components/features/auth";
+import { usePermissions } from "hooks/usePermissions";
+import { RequirePermission } from "components/features/permissions";
 import { RunWorkflowButton } from "./RunWorkflowButton";
 
 export interface HeaderActionButtonsProps {
@@ -36,6 +38,7 @@ export const HeadActionButtons: FunctionComponent<HeaderActionButtonsProps> = ({
   definitionActor: service,
 }) => {
   const { isTrialExpired } = useAuth();
+  const { canWrite } = usePermissions();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSaveRequest = () => {
@@ -84,18 +87,22 @@ export const HeadActionButtons: FunctionComponent<HeaderActionButtonsProps> = ({
   };
 
   const buttons: ButtonTooltipProps[] = [
-    {
-      id: "head-action-delete-btn",
-      variant: "text",
-      tooltip:
-        "Delete this version of the workflow definition, previous executions will not be remove (Ctrl D)",
-      disabled: isNewWorkflow || isTrialExpired,
-      onClick: handleDeleteRequest,
-      "data-testid": "workflow-definition-delete-button",
-      sx: { color: (theme) => theme.palette.error.main },
-      startIcon: <TrashIcon />,
-      children: <UnderlinedText text="Delete" underlinedIndexes={[0]} />,
-    },
+    ...(canWrite
+      ? [
+          {
+            id: "head-action-delete-btn",
+            variant: "text",
+            tooltip:
+              "Delete this version of the workflow definition, previous executions will not be remove (Ctrl D)",
+            disabled: isNewWorkflow || isTrialExpired,
+            onClick: handleDeleteRequest,
+            "data-testid": "workflow-definition-delete-button",
+            sx: { color: (theme) => theme.palette.error.main },
+            startIcon: <TrashIcon />,
+            children: <UnderlinedText text="Delete" underlinedIndexes={[0]} />,
+          },
+        ]
+      : []),
     {
       id: "head-action-reset-btn",
       variant: "text",
@@ -164,7 +171,7 @@ export const HeadActionButtons: FunctionComponent<HeaderActionButtonsProps> = ({
       switch (joinedKeys) {
         // 1. Save
         case [Key.Control, "S"].join().toLowerCase(): {
-          if (madeChanges && !emptyTaskList && !isTrialExpired) {
+          if (canWrite && madeChanges && !emptyTaskList && !isTrialExpired) {
             debounceSaveRequest();
           }
           break;
@@ -172,7 +179,7 @@ export const HeadActionButtons: FunctionComponent<HeaderActionButtonsProps> = ({
 
         // 2. Save & Run
         case [Key.Control, "E"].join().toLowerCase(): {
-          if (!emptyTaskList && !isTrialExpired) {
+          if (canWrite && !emptyTaskList && !isTrialExpired) {
             debounceSaveRequest.cancel();
             handleSaveAndRunRequest();
           }
@@ -184,6 +191,7 @@ export const HeadActionButtons: FunctionComponent<HeaderActionButtonsProps> = ({
           debounceSaveRequest.cancel();
 
           if (
+            canWrite &&
             !isNewWorkflow &&
             madeChanges &&
             !emptyTaskList &&
@@ -212,7 +220,7 @@ export const HeadActionButtons: FunctionComponent<HeaderActionButtonsProps> = ({
 
         // 6. Delete workflow definition
         case [Key.Control, "D"].join().toLowerCase(): {
-          if (!isNewWorkflow && !isTrialExpired) {
+          if (canWrite && !isNewWorkflow && !isTrialExpired) {
             handleDeleteRequest();
           }
 
@@ -222,7 +230,7 @@ export const HeadActionButtons: FunctionComponent<HeaderActionButtonsProps> = ({
         // 7. Save & Create New
         case [Key.Control, "S", "C"].join().toLowerCase(): {
           debounceSaveRequest.cancel();
-          if (madeChanges && !emptyTaskList && !isTrialExpired) {
+          if (canWrite && madeChanges && !emptyTaskList && !isTrialExpired) {
             handleSaveAndCreateNewRequest();
           }
           break;
@@ -252,17 +260,19 @@ export const HeadActionButtons: FunctionComponent<HeaderActionButtonsProps> = ({
 
       <RunWorkflowButton definitionActor={service} disabled={emptyTaskList} />
 
-      <SplitButton
-        startIcon={<SaveIcon />}
-        disabled={!madeChanges || emptyTaskList || isTrialExpired}
-        id={"head-action-save-btn"}
-        options={saveSplitButtonOptions}
-        primaryOnClick={handleSaveRequest}
-        tooltip="Save this definition (Ctrl S)"
-        data-testid="workflow-definition-save-button"
-      >
-        <UnderlinedText text="Save" underlinedIndexes={[0]} />
-      </SplitButton>
+      <RequirePermission permission="WRITE">
+        <SplitButton
+          startIcon={<SaveIcon />}
+          disabled={!madeChanges || emptyTaskList || isTrialExpired}
+          id={"head-action-save-btn"}
+          options={saveSplitButtonOptions}
+          primaryOnClick={handleSaveRequest}
+          tooltip="Save this definition (Ctrl S)"
+          data-testid="workflow-definition-save-button"
+        >
+          <UnderlinedText text="Save" underlinedIndexes={[0]} />
+        </SplitButton>
+      </RequirePermission>
     </Stack>
   );
 };

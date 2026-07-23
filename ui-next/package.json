@@ -103,6 +103,7 @@
     "jotai": "^2.19.1",
     "lodash": "^4.18.1",
     "mock-json-schema": "^1.1.1",
+    "moment": "^2.30.1",
     "monaco-languages-jq": "^1.0.0",
     "prismjs": "^1.27.0",
     "prop-types": "^15.7.2",
@@ -124,6 +125,7 @@
     "ts-key-enum": "^2.0.12",
     "url-parse": "^1.5.9",
     "uuid": "^8.3.2",
+    "vis-util": "^6.0.0",
     "xstate": "^4.38.3"
   },
   "devDependencies": {
@@ -186,16 +188,9 @@
     "vitest": "^3.2.4",
     "yup": "^1.7.0"
   },
-  "resolutions": {
+  "overrides": {
     "vis-timeline": "7.3.6",
     "vis-data": "7.1.9",
     "mini-css-extract-plugin": "2.4.5"
-  },
-  "pnpm": {
-    "overrides": {
-      "vis-timeline": "7.3.6",
-      "mini-css-extract-plugin": "2.4.5"
-    }
-  },
-  "packageManager": "pnpm@10.34.1+sha512.b58fbde6dca66a929538021581f648b4570b6ca19b18e7cbd7f2c07a7b24454155388dacdf08f2af3678e88a6d1fe04f9d609df24bf51735a060ea041b374ab7"
+  }
 }

@@ -5,6 +5,7 @@ import XCloseIcon from "components/icons/XCloseIcon";
 import ResetIcon from "components/icons/ResetIcon";
 import { Theme } from "@mui/material/styles";
 import { useAuth } from "components/features/auth";
+import { RequirePermission } from "components/features/permissions";
 
 export interface ScheduleButtonsProps {
   isConfirmingSave: boolean;
@@ -63,13 +64,15 @@ const ScheduleButtons: FunctionComponent<ScheduleButtonsProps> = ({
           >
             Reset
           </Button>
-          <Button
-            onClick={() => setSaveConfirmationOpen()}
-            disabled={couldNotParseJson || isTrialExpired}
-            startIcon={<SaveIcon />}
-          >
-            Save
-          </Button>
+          <RequirePermission permission="WRITE">
+            <Button
+              onClick={() => setSaveConfirmationOpen()}
+              disabled={couldNotParseJson || isTrialExpired}
+              startIcon={<SaveIcon />}
+            >
+              Save
+            </Button>
+          </RequirePermission>
         </Stack>
       )}
     </Stack>

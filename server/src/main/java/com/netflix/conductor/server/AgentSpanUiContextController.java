@@ -20,6 +20,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,10 +49,14 @@ import jakarta.servlet.http.HttpServletResponse;
 public class AgentSpanUiContextController {
 
     private final boolean agentSpanEnabled;
+    private final boolean staticResourcesProtectionEnabled;
 
     public AgentSpanUiContextController(
-            @Value("${conductor.integrations.ai.enabled:false}") boolean agentSpanEnabled) {
+            @Value("${conductor.integrations.ai.enabled:false}") boolean agentSpanEnabled,
+            @Value("${conductor.ui.security.static-resources-protection.enabled:false}")
+                    boolean staticResourcesProtectionEnabled) {
         this.agentSpanEnabled = agentSpanEnabled;
+        this.staticResourcesProtectionEnabled = staticResourcesProtectionEnabled;
     }
 
     @GetMapping("/context.js")
@@ -75,6 +81,33 @@ public class AgentSpanUiContextController {
         js.append("\n// Injected by Conductor server (conductor.integrations.ai.enabled)\n");
         js.append("window.conductor = window.conductor || {};\n");
         js.append("window.conductor.AGENTSPAN_ENABLED = ").append(agentSpanEnabled).append(";\n");
+        js.append(
+                "\n// Injected by Conductor server (conductor.ui.security.static-resources-protection.enabled)\n");
+        js.append("window.conductor.STATIC_RESOURCES_PROTECTION = ")
+                .append(staticResourcesProtectionEnabled)
+                .append(";\n");
+
+        // When protection mode is active, expose the logged-in username so the
+        // UI can display it in the sidebar footer.
+        if (staticResourcesProtectionEnabled) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated()) {
+                Object principal = auth.getPrincipal();
+                // Skip anonymous / string-based principals that represent unauthenticated users.
+                if (!(principal instanceof String && "anonymousUser".equals(principal))) {
+                    String username = auth.getName();
+                    // Escape for JS string literal: \, ", and newlines.
+                    String escaped =
+                            username.replace("\\", "\\\\")
+                                    .replace("\"", "\\\"")
+                                    .replace("\n", "\\n");
+                    js.append("\n// Injected by Conductor server (logged-in username)\n");
+                    js.append("window.conductor.STATIC_RESOURCES_USERNAME = \"")
+                            .append(escaped)
+                            .append("\";\n");
+                }
+            }
+        }
 
         response.getWriter().write(js.toString());
     }

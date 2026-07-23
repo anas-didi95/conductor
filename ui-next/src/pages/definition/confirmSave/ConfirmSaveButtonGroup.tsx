@@ -11,6 +11,8 @@ import { SaveWorkflowEvents, SaveWorkflowMachineEventTypes } from "./state";
 import { useHotkeys } from "react-hotkeys-hook";
 import { Key } from "ts-key-enum";
 import { HOT_KEYS_WORKFLOW_DEFINITION } from "utils/constants/common";
+import { usePermissions } from "hooks/usePermissions";
+import { RequirePermission } from "components/features/permissions";
 
 interface ConfirmSaveButtonGroupProps {
   saveChangesActor: ActorRef<SaveWorkflowEvents>;
@@ -20,6 +22,7 @@ export const ConfirmSaveButtonGroup: FunctionComponent<
   ConfirmSaveButtonGroupProps
 > = ({ saveChangesActor }) => {
   const [, send] = useActor(saveChangesActor);
+  const { canWrite } = usePermissions();
 
   const handleConfirmSaveRequest = () => {
     send({ type: SaveWorkflowMachineEventTypes.CONFIRM_SAVE_EVT });
@@ -74,26 +77,28 @@ export const ConfirmSaveButtonGroup: FunctionComponent<
         Cancel
       </ButtonTooltip>
 
-      <ButtonTooltip
-        id="confirm-saving-btn"
-        tooltip="Confirm Saving (↵)"
-        onClick={handleConfirmSaveRequest}
-        disabled={isSaving}
-        startIcon={<SaveIcon />}
-      >
-        {isSaving ? (
-          <>
-            Saving
-            <CircularProgress
-              sx={{ ml: "10px" }}
-              size="1.1rem"
-              color="inherit"
-            />
-          </>
-        ) : (
-          "Confirm"
-        )}
-      </ButtonTooltip>
+      <RequirePermission permission="WRITE">
+        <ButtonTooltip
+          id="confirm-saving-btn"
+          tooltip="Confirm Saving (↵)"
+          onClick={handleConfirmSaveRequest}
+          disabled={isSaving}
+          startIcon={<SaveIcon />}
+        >
+          {isSaving ? (
+            <>
+              Saving
+              <CircularProgress
+                sx={{ ml: "10px" }}
+                size="1.1rem"
+                color="inherit"
+              />
+            </>
+          ) : (
+            "Confirm"
+          )}
+        </ButtonTooltip>
+      </RequirePermission>
     </Stack>
   );
 };

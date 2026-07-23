@@ -22,6 +22,7 @@ import { editor } from "shared/editor";
 import SectionContainer from "components/ui/layout/SectionContainer";
 import SectionHeader from "components/layout/SectionHeader";
 import { useAuth } from "components/features/auth";
+import { usePermissions } from "../../hooks/usePermissions";
 import { colors } from "theme/tokens/variables";
 import { logger, tryToJson, useLocalStorage } from "utils/index";
 import { useAction, useWorkflowDefsByVersions } from "utils/query";
@@ -189,6 +190,7 @@ export function RunWorkflow() {
   );
 
   const { isTrialExpired } = useAuth();
+  const { canExecute } = usePermissions();
 
   const workflowDefByVersions = useWorkflowDefsByVersions();
   const workflowNames = useMemo(
@@ -559,20 +561,22 @@ export function RunWorkflow() {
                   >
                     Reset
                   </Button>
-                  <SplitButton
-                    id="run-workflow-btn"
-                    startIcon={<PlayIcon />}
-                    options={[
-                      {
-                        label: "Show as code",
-                        onClick: () => setShowCodeDialog("active"),
-                      },
-                    ]}
-                    primaryOnClick={runThisWorkflow}
-                    disabled={isTrialExpired}
-                  >
-                    Run workflow
-                  </SplitButton>
+                  {canExecute && (
+                    <SplitButton
+                      id="run-workflow-btn"
+                      startIcon={<PlayIcon />}
+                      options={[
+                        {
+                          label: "Show as code",
+                          onClick: () => setShowCodeDialog("active"),
+                        },
+                      ]}
+                      primaryOnClick={runThisWorkflow}
+                      disabled={isTrialExpired}
+                    >
+                      Run workflow
+                    </SplitButton>
+                  )}
                 </>
               }
             />

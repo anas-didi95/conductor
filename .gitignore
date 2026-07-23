@@ -1,3 +1,5 @@
+.pnpm-store/
+
 # Worktrees
 .worktrees/
 
@@ -49,6 +51,7 @@ conductorosstest.db
 yarn.lock
 .java-version
 /server/src/main/resources/static
+!/server/src/main/resources/static/login.html
 *.factorypath
 server/*.db*
 /site

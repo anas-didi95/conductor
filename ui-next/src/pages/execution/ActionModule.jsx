@@ -1,5 +1,6 @@
 import { isFailedTask } from "utils";
 import { DropdownButton } from "components";
+import { usePermissions } from "../../hooks/usePermissions";
 
 import {
   ArrowCounterClockwise as ReplayIcon,
@@ -29,6 +30,7 @@ export default function ActionModule({
   rerunExecutionWithLatestDefinitions,
   createSheduleWithLatestDefinitions,
 }) {
+  const { canExecute } = usePermissions();
   const { workflowDefinition } = execution;
 
   const { restartable } = workflowDefinition; // MOVE this cond
@@ -51,33 +53,36 @@ export default function ActionModule({
     handler: createSheduleWithLatestDefinitions,
   };
 
-  // TODO build the options if no options grayout button
   if (execution.status === "COMPLETED") {
     const options = [];
-    if (restartable) {
-      options.push({
-        label: (
-          <>
-            <RestartIcon style={style.menuIcon} size="16" />
-            Restart with current definitions
-          </>
-        ),
-        handler: onRestartExecutionWithCurrentDefinitions,
-      });
+    if (canExecute) {
+      if (restartable) {
+        options.push({
+          label: (
+            <>
+              <RestartIcon style={style.menuIcon} size="16" />
+              Restart with current definitions
+            </>
+          ),
+          handler: onRestartExecutionWithCurrentDefinitions,
+        });
 
-      options.push({
-        label: (
-          <>
-            <RestartLatestIcon style={style.menuIcon} size="16" />
-            Restart with latest definitions
-          </>
-        ),
-        handler: onRestartExecutionWithLatestDefinitions,
-      });
+        options.push({
+          label: (
+            <>
+              <RestartLatestIcon style={style.menuIcon} size="16" />
+              Restart with latest definitions
+            </>
+          ),
+          handler: onRestartExecutionWithLatestDefinitions,
+        });
+      }
+
+      options.push(rerunWorkflowOption);
+      options.push(createScheduleOption);
     }
 
-    options.push(rerunWorkflowOption);
-    options.push(createScheduleOption);
+    if (options.length === 0) return null;
 
     return (
       <DropdownButton
@@ -92,6 +97,32 @@ export default function ActionModule({
       </DropdownButton>
     );
   } else if (execution.status === "RUNNING") {
+    const options = [];
+    if (canExecute) {
+      options.push({
+        label: (
+          <>
+            <StopIcon
+              size="16"
+              style={{ ...style.menuIcon, color: "red" }}
+            />
+            <span style={{ color: "red" }}>Terminate</span>
+          </>
+        ),
+        handler: onTerminateExecution,
+      });
+      options.push({
+        label: (
+          <>
+            <PauseIcon size="16" style={style.menuIcon} />
+            Pause
+          </>
+        ),
+        handler: onPauseExecution,
+      });
+      options.push(rerunWorkflowOption);
+    }
+    if (options.length === 0) return null;
     return (
       <DropdownButton
         buttonProps={{
@@ -99,35 +130,38 @@ export default function ActionModule({
           sx: { zIndex: 5000, fontSize: "9pt" },
           id: "execution-actions-dropdown-btn",
         }}
-        options={[
-          {
-            label: (
-              <>
-                <StopIcon
-                  size="16"
-                  style={{ ...style.menuIcon, color: "red" }}
-                />
-                <span style={{ color: "red" }}>Terminate</span>
-              </>
-            ),
-            handler: onTerminateExecution,
-          },
-          {
-            label: (
-              <>
-                <PauseIcon size="16" style={style.menuIcon} />
-                Pause
-              </>
-            ),
-            handler: onPauseExecution,
-          },
-          rerunWorkflowOption,
-        ]}
+        options={options}
       >
         Actions
       </DropdownButton>
     );
   } else if (execution.status === "PAUSED") {
+    const options = [];
+    if (canExecute) {
+      options.push({
+        label: (
+          <>
+            <StopIcon
+              size="16"
+              style={{ ...style.menuIcon, color: "red" }}
+            />
+            <span style={{ color: "red" }}>Terminate</span>
+          </>
+        ),
+        handler: onTerminateExecution,
+      });
+      options.push({
+        label: (
+          <>
+            <ResumeIcon size="16" style={style.menuIcon} />
+            Resume
+          </>
+        ),
+        handler: onResumeExecution,
+      });
+      options.push(rerunWorkflowOption);
+    }
+    if (options.length === 0) return null;
     return (
       <DropdownButton
         buttonProps={{
@@ -135,30 +169,7 @@ export default function ActionModule({
           sx: { zIndex: 5000, fontSize: "9pt" },
           id: "execution-actions-dropdown-btn",
         }}
-        options={[
-          {
-            label: (
-              <>
-                <StopIcon
-                  size="16"
-                  style={{ ...style.menuIcon, color: "red" }}
-                />
-                <span style={{ color: "red" }}>Terminate</span>
-              </>
-            ),
-            handler: onTerminateExecution,
-          },
-          {
-            label: (
-              <>
-                <ResumeIcon size="16" style={style.menuIcon} />
-                Resume
-              </>
-            ),
-            handler: onResumeExecution,
-          },
-          rerunWorkflowOption,
-        ]}
+        options={options}
       >
         Actions
       </DropdownButton>
@@ -167,76 +178,80 @@ export default function ActionModule({
     // FAILED, TIMED_OUT, TERMINATED
     const options = [];
 
-    if (["FAILED", "TIMED_OUT"].includes(execution.status)) {
-      options.push({
-        label: (
-          <>
-            <StopIcon size="16" style={{ ...style.menuIcon, color: "red" }} />
-            <span style={{ color: "red" }}>Terminate</span>
-          </>
-        ),
-        handler: onTerminateExecution,
-      });
+    if (canExecute) {
+      if (["FAILED", "TIMED_OUT"].includes(execution.status)) {
+        options.push({
+          label: (
+            <>
+              <StopIcon size="16" style={{ ...style.menuIcon, color: "red" }} />
+              <span style={{ color: "red" }}>Terminate</span>
+            </>
+          ),
+          handler: onTerminateExecution,
+        });
+      }
+
+      if (restartable) {
+        options.push({
+          label: (
+            <>
+              <RestartIcon style={style.menuIcon} size="16" />
+              Restart with current definitions
+            </>
+          ),
+          handler: onRestartExecutionWithCurrentDefinitions,
+        });
+
+        options.push({
+          label: (
+            <>
+              <RestartLatestIcon style={style.menuIcon} size="16" />
+              Restart with latest definitions
+            </>
+          ),
+          handler: onRestartExecutionWithLatestDefinitions,
+        });
+      }
+
+      if (
+        execution?.tasks?.some(
+          (task) => !task.retried && isFailedTask(task.status),
+        )
+      ) {
+        options.push({
+          label: (
+            <>
+              <ReplayIcon style={style.menuIcon} size="16" />
+              Retry - from failed task
+            </>
+          ),
+          handler: onRetryExecutionFromFailed,
+        });
+      }
+
+      options.push(rerunWorkflowOption);
+
+      if (
+        (execution.status === "FAILED" || execution.status === "TIMED_OUT") &&
+        execution.tasks.find(
+          (task) =>
+            task.workflowTask.type === "SUB_WORKFLOW" &&
+            isFailedTask(task.status),
+        )
+      ) {
+        options.push({
+          label: (
+            <>
+              <ReplayIcon style={style.menuIcon} size="16" />
+              Retry - resume subworkflow
+            </>
+          ),
+          handler: onRetryResumeSubworkflow,
+        });
+      }
     }
 
-    if (restartable) {
-      options.push({
-        label: (
-          <>
-            <RestartIcon style={style.menuIcon} size="16" />
-            Restart with current definitions
-          </>
-        ),
-        handler: onRestartExecutionWithCurrentDefinitions,
-      });
-
-      options.push({
-        label: (
-          <>
-            <RestartLatestIcon style={style.menuIcon} size="16" />
-            Restart with latest definitions
-          </>
-        ),
-        handler: onRestartExecutionWithLatestDefinitions,
-      });
-    }
-
-    if (
-      execution?.tasks?.some(
-        (task) => !task.retried && isFailedTask(task.status),
-      )
-    ) {
-      options.push({
-        label: (
-          <>
-            <ReplayIcon style={style.menuIcon} size="16" />
-            Retry - from failed task
-          </>
-        ),
-        handler: onRetryExecutionFromFailed,
-      });
-    }
-
-    options.push(rerunWorkflowOption);
-
-    if (
-      (execution.status === "FAILED" || execution.status === "TIMED_OUT") &&
-      execution.tasks.find(
-        (task) =>
-          task.workflowTask.type === "SUB_WORKFLOW" &&
-          isFailedTask(task.status),
-      )
-    ) {
-      options.push({
-        label: (
-          <>
-            <ReplayIcon style={style.menuIcon} size="16" />
-            Retry - resume subworkflow
-          </>
-        ),
-        handler: onRetryResumeSubworkflow,
-      });
-    }
+    if (options.length === 0) return null;
 
     return (
       <DropdownButton

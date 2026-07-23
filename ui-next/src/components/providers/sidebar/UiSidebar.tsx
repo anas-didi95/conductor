@@ -23,6 +23,8 @@ import { FEATURES, featureFlags } from "utils";
 import { SidebarContext } from "./context/SidebarContext";
 import { useAuth } from "components/features/auth";
 import { getCoreSidebarItems } from "./sidebarCoreItems";
+import { usePermissions } from "hooks/usePermissions";
+import { hasPermission } from "utils/permissions";
 
 const customLogo = featureFlags.getValue(FEATURES.CUSTOM_LOGO_URL);
 
@@ -186,10 +188,22 @@ export const UISidebar: FunctionComponent<UISidebarProps> = ({
     [],
   );
 
+  const { role } = usePermissions();
+
+  // API Docs is only shown for ADMIN users (or when RBAC is disabled / role is null)
+  const showApiDocs = hasPermission(role, "WRITE");
+
   const menuItems = useMemo<MenuItemType[]>(() => {
     const coreItems = getCoreSidebarItems(open);
-    return mergePluginSidebarItems(coreItems, pluginSidebarItems);
-  }, [open, pluginSidebarItems]);
+    const merged = mergePluginSidebarItems(coreItems, pluginSidebarItems);
+    if (!showApiDocs) {
+      const swaggerItem = merged.find((i) => i.id === "swaggerItem");
+      if (swaggerItem) {
+        swaggerItem.hidden = true;
+      }
+    }
+    return merged;
+  }, [open, pluginSidebarItems, showApiDocs]);
 
   return (
     <Sidebar

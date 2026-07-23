@@ -33,6 +33,7 @@ import SectionContainer from "components/ui/layout/SectionContainer";
 import SectionHeader from "components/layout/SectionHeader";
 import SectionHeaderActions from "components/ui/layout/SectionHeaderActions";
 import { useAuth } from "components/features/auth";
+import { usePermissions } from "hooks/usePermissions";
 import { colors } from "theme/tokens/variables";
 import { ConductorEvent } from "types/Events";
 import { TagDto } from "types/Tag";
@@ -64,6 +65,7 @@ Read more:
 export default function EventDefinitionList() {
   const { data: eventHandlers = [], isFetching, refetch } = useFetch("/event");
   const { isTrialExpired } = useAuth();
+  const { canWrite } = usePermissions();
   const [toast, setToast] = useState({
     isOpen: false,
     message: "",
@@ -192,7 +194,7 @@ export default function EventDefinitionList() {
         right: true,
         renderer: (__: string, taskRowData: any) => (
           <Box sx={{ display: "flex", justifyContent: "space-evenly", gap: 2 }}>
-            {taskRowData.active && (
+            {canWrite && taskRowData.active && (
               <Tooltip title={"Pause event"}>
                 <IconButton
                   onClick={() => handlePauseResumeEvent(taskRowData, false)}
@@ -204,7 +206,7 @@ export default function EventDefinitionList() {
                 </IconButton>
               </Tooltip>
             )}
-            {tagsEnabled && (
+            {canWrite && tagsEnabled && (
               <Tooltip title={"Add/Edit tags"}>
                 <IconButton
                   id={`add-tags-${taskRowData.name}-btn`}
@@ -223,7 +225,7 @@ export default function EventDefinitionList() {
                 </IconButton>
               </Tooltip>
             )}
-            {!taskRowData.active && (
+            {canWrite && !taskRowData.active && (
               <Tooltip title={"Resume event"}>
                 <IconButton
                   onClick={() => handlePauseResumeEvent(taskRowData, true)}
@@ -235,26 +237,28 @@ export default function EventDefinitionList() {
                 </IconButton>
               </Tooltip>
             )}
-            <Tooltip title={"Delete event handler"}>
-              <IconButton
-                id={`delete-${taskRowData.name}-btn`}
-                onClick={() => {
-                  setConfirmDeleteName(taskRowData?.name);
-                }}
-                disabled={isTrialExpired}
-                size="small"
-                sx={{
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <DeleteIcon size={20} />
-              </IconButton>
-            </Tooltip>
+            {canWrite && (
+              <Tooltip title={"Delete event handler"}>
+                <IconButton
+                  id={`delete-${taskRowData.name}-btn`}
+                  onClick={() => {
+                    setConfirmDeleteName(taskRowData?.name);
+                  }}
+                  disabled={isTrialExpired}
+                  size="small"
+                  sx={{
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <DeleteIcon size={20} />
+                </IconButton>
+              </Tooltip>
+            )}
           </Box>
         ),
       },
     ],
-    [isTrialExpired, tagsEnabled, handlePauseResumeEvent],
+    [isTrialExpired, tagsEnabled, handlePauseResumeEvent, canWrite],
   );
 
   const deleteEventHandler = useActionWithPath({
@@ -358,11 +362,15 @@ export default function EventDefinitionList() {
         actions={
           <SectionHeaderActions
             buttons={[
-              {
-                label: "Define event handler",
-                onClick: () => pushHistory(EVENT_HANDLERS_URL.NEW),
-                startIcon: <AddIcon />,
-              },
+              ...(canWrite
+                ? [
+                    {
+                      label: "Define event handler",
+                      onClick: () => pushHistory(EVENT_HANDLERS_URL.NEW),
+                      startIcon: <AddIcon />,
+                    },
+                  ]
+                : []),
             ]}
           />
         }
