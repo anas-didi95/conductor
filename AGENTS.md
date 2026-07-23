@@ -1,119 +1,81 @@
 # AGENTS.md
 
-Instructions for AI coding agents working on the Conductor codebase.
+Instructions for AI coding agents working on the Conductor codebase. See [CLAUDE.md](CLAUDE.md) for documentation writing rules.
 
 ## Project Overview
 
-Conductor is an open-source, distributed workflow orchestration engine. It uses a pluggable architecture with interface-based abstractions for persistence, queuing, and indexing. Built with Java 21, Gradle, and Spring Boot 3.3.x.
+Conductor is an open-source, distributed workflow orchestration engine. Pluggable architecture with interface-based abstractions for persistence, queuing, and indexing. Java 21, Gradle, Spring Boot 3.3.x.
 
-## Setup Commands
+**Main class:** `com.netflix.conductor.Conductor` — `@SpringBootApplication(exclude = {DataSourceAutoConfiguration.class, MongoAutoConfiguration.class})`
+**Component scan:** `com.netflix.conductor`, `io.orkes.conductor`, `dev.agentspan`, `org.conductoross.conductor`
+
+## Setup & Commands
 
 | Command | Description |
 |---------|-------------|
-| `./gradlew build` | Build all modules (CI excludes test-harness tests; see below) |
-| `./gradlew test` | Run all unit tests |
-| `./gradlew :conductor-<module>:test` | Run tests for a specific module (e.g. `:conductor-core:test`) |
-| `./gradlew spotlessApply` | Apply code formatting — required after every code change |
-| `./gradlew clean build` | Clean and rebuild |
-| `./gradlew :conductor-server:bootRun` | Start the dev server (listens on `:8080`) |
-| `./gradlew jacocoAggregatedReport` | Aggregate JaCoCo coverage (run `build` first) |
-
-> **Always run `./gradlew spotlessApply` before committing.**
-
-### Running the server
+| `./gradlew build` | Compile all modules (CI skips tests with `-x test -x :conductor-test-harness:test`) |
+| `./gradlew test -x :conductor-test-harness:test` | Run all unit tests |
+| `./gradlew :conductor-<module>:test` | Run tests for one module (e.g. `:conductor-core:test`) |
+| `./gradlew spotlessApply` | **Required before every commit** |
+| `./gradlew :conductor-server:bootRun` | Dev server on `:8080` (swagger at `/swagger-ui/index.html`) |
+| `./gradlew jacocoAggregatedReport` | Aggregate coverage (run tests first; does NOT trigger tests) |
+| `./gradlew :conductor-core:benchmarkScripts` | JS engine benchmark runner |
 
 ```shell
+# Server (config via CONDUCTOR_CONFIG_FILE env var or Spring props)
 cd server && ../gradlew bootRun
-# http://localhost:8080, swagger at /swagger-ui/index.html
-```
 
-Config via env var `CONDUCTOR_CONFIG_FILE` or Spring properties. See `docker/server/config/` for example configs (Redis+ES7 default, Postgres, MySQL, etc.).
-
-### Indexing backend build-time selection
-
-The server module resolves the indexing backend at **build time** to avoid Lucene conflicts between ES and OpenSearch:
-
-```shell
+# Indexing backend at build time (avoids Lucene conflicts):
 ./gradlew build -PindexingBackend=os3
-# Accepted values: elasticsearch|es7 (default), elasticsearch8|es8, opensearch|os, opensearch3|os3
+# Accepted: elasticsearch|es7 (default), elasticsearch8|es8, opensearch|os, opensearch3|os3
 ```
+
+**Gradle JVM:** `-Xmx4g` (set in `gradle.properties`). Current version: `3.30.2-rc1`.
 
 ## Module Architecture
 
-All subprojects are prefixed with `conductor-` (enforced by `settings.gradle`). Use this prefix in Gradle task references.
+All subprojects automatically prefixed `conductor-` (by `settings.gradle`). Scheduler modules live under `scheduler/` but are top-level Gradle modules (e.g. `:conductor-scheduler-core` → `scheduler/core`).
 
-### Core modules
+| Path → Module | Role |
+|---------------|------|
+| `core/` → `conductor-core` | Interfaces, domain models, business logic, GraalVM script engine |
+| `common/` → `conductor-common` | Shared models + protogen annotation source |
+| `rest/` → `conductor-rest` | REST controllers (`com.netflix.conductor.rest.controllers`) |
+| `server/` → `conductor-server` | Spring Boot app (only module with a `bootJar`) |
+| `grpc/` → `conductor-grpc` | Proto definitions + generated gRPC stubs |
+| `grpc-server/` / `grpc-client/` | gRPC implementations |
+| `ai/` → `conductor-ai` | AI/LLM integration tasks |
+| `agentspan/` → `conductor-agentspan` | AgentSpan runtime (activated via `conductor.integrations.ai.enabled=true`) |
+| `annotations-processor/` | Protogen codegen (annotated POJOs → .proto) |
+| `conductor-clients/` | Polyglot client wrappers (ignored by CI: `paths-ignore`) |
+| `ui-next/` | React-based UI (pnpm, Vite, Vitest, Playwright) |
 
-| Module | Path | Role |
-|--------|------|------|
-| `conductor-core` | `core/` | Interfaces, domain models, core business logic, GraalVM script engine |
-| `conductor-common` | `common/` | Shared metadata and model classes |
-| `conductor-rest` | `rest/` | REST controllers (`com.netflix.conductor.rest.controllers`) |
-| `conductor-server` | `server/` | Spring Boot app — main class `com.netflix.conductor.Conductor` |
-| `conductor-grpc` | `grpc/` | Protobuf definitions + gRPC stubs (generated code) |
-| `conductor-grpc-server` | `grpc-server/` | gRPC server implementation |
-| `conductor-grpc-client` | `grpc-client/` | gRPC client |
-
-### Persistence modules
-
-DAO interfaces live in `core`. Implementations go in their respective module (e.g. `postgres-persistence`, `redis-persistence`).
-
-| Module | Path |
-|--------|------|
-| `conductor-redis-persistence` | `redis-persistence/` |
-| `conductor-postgres-persistence` | `postgres-persistence/` |
-| `conductor-mysql-persistence` | `mysql-persistence/` |
-| `conductor-cassandra-persistence` | `cassandra-persistence/` |
-| `conductor-sqlite-persistence` | `sqlite-persistence/` |
-| `conductor-es7-persistence` | `es7-persistence/` |
-| `conductor-es8-persistence` | `es8-persistence/` |
-| `conductor-os-persistence` / `-v2` / `-v3` | `os-persistence/`, `os-persistence-v2/`, `os-persistence-v3/` |
-
-### Scheduler submodules
-
-Scheduler modules are nested under `scheduler/` but named as top-level Gradle modules:
-
-```groovy
-project(':conductor-scheduler-core').projectDir = file('scheduler/core')
-project(':conductor-scheduler-postgres-persistence').projectDir = file('scheduler/postgres-persistence')
-// etc.
-```
-
-### Other modules
-
-- `conductor-ai` (`ai/`) — AI/LLM integration tasks
-- `conductor-agentspan` (`agentspan/`) — Embedded AgentSpan runtime (activated via `conductor.integrations.ai.enabled=true`)
-- `conductor-annotations` + `conductor-annotations-processor` — Protogen codegen (converts annotated POJOs to `.proto`)
-- `conductor-test-harness` (`test-harness/`) — Integration tests using TestContainers
-- `conductor-e2e` (`e2e/`) — End-to-end tests
-- `conductor-client` modules in `conductor-clients/` — polyglot client wrappers (ignored by CI: `paths-ignore: ["conductor-clients/**"]`)
-- `ui-next/` — React-based UI (pnpm, Vite, Vitest, Playwright)
+DAO interfaces live in `core`. Implementations in their own module (`redis-persistence/`, `postgres-persistence/`, `mysql-persistence/`, `cassandra-persistence/`, `sqlite-persistence/`, `es7-persistence/`, `es8-persistence/`, `os-persistence/`, `os-persistence-v2/`, `os-persistence-v3/`).
 
 ## Testing
 
-### Testing philosophy
-
-- **Avoid mocks.** Use real implementations and TestContainers where possible.
-- Tests use JUnit 5 platform. `core` and `test-harness` also use Spock (Groovy).
-- TestContainers Docker API version is forced to 1.44 in CI via `~/.docker-java.properties`.
-
-### CI test execution order and quirks
-
-CI runs three separate jobs:
-1. **`build`** — compiles everything (`./gradlew build -x :conductor-test-harness:test -x test`)
-2. **`unit-test`** — runs `./gradlew test -x :conductor-test-harness:test`
-3. **`test-harness`** — runs `./gradlew :conductor-test-harness:test`
-
-On PRs, heavy persistence tests (cassandra, es6/7/8, mysql, opensearch) are **skipped** unless their source changed (detected by `dorny/paths-filter`).
-
-### Running tests locally
+- **Avoid mocks.** Prefer real implementations + TestContainers.
+- JUnit 5 platform. `core` and `test-harness` also use Spock (Groovy).
+- TestContainers Docker API version forced to `1.44` in CI via `~/.docker-java.properties`.
+- Tests use `systemProperty 'dockerconfig.source', 'autoIgnoringUserProperties'` (no user-level Docker client config overrides).
+- Each module's `test` task finalizes with `jacocoTestReport`.
 
 ```shell
 # Single module (fastest feedback)
 ./gradlew :conductor-core:test
 
-# All unit tests except test-harness
-./gradlew test -x :conductor-test-harness:test
+# CI skips heavy persistence tests (cassandra, es6/7/8, mysql, opensearch) on PRs
+# unless their source changed (detected by dorny/paths-filter). Redis, postgres, sqlite always run.
+# Local equivalent:
+./gradlew test -x :conductor-test-harness:test \
+  -x :conductor-cassandra-persistence:test \
+  -x :conductor-es6-persistence:test \
+  -x :conductor-es7-persistence:test \
+  -x :conductor-es8-persistence:test \
+  -x :conductor-mysql-persistence:test \
+  -x :conductor-os-persistence:test \
+  -x :conductor-os-persistence-v2:test \
+  -x :conductor-os-persistence-v3:test
 
 # Integration tests (requires Docker)
 ./gradlew :conductor-test-harness:test
@@ -124,10 +86,9 @@ On PRs, heavy persistence tests (cassandra, es6/7/8, mysql, opensearch) are **sk
 # E2E functional tests against embedded server
 ./gradlew :conductor-test-harness:functionalTest
 ```
+The `functionalTest` uses a dedicated source set + classpath. It excludes `SetVariableTests.testAllFast`.
 
-The `functionalTest` task runs e2e tests via a dedicated source set with separate classpath config. It excludes one heavy load test (`SetVariableTests.testAllFast`).
-
-### UI tests
+### UI tests (`ui-next/`)
 
 ```shell
 cd ui-next
@@ -138,76 +99,53 @@ pnpm test:e2e       # Playwright (requires server)
 pnpm build          # vite build
 ```
 
+UI uses **ESLint** + **Prettier** (not Spotless). CI runs: `format → lint → typecheck → test → build`.
+
 ## Code Style
 
 - Spotless with Google Java Format (AOSP variant), `removeUnusedImports`, custom import order: `java`, `javax`, `org`, `com.netflix`, ``, `\#com.netflix`, `\#`
-- License header is enforced by Spotless (see `licenseheader.txt`)
-- Lombok 1.18.42 used throughout (`@Slf4j`, `@Data`, `@Builder`, etc.)
+- License header enforced (see `licenseheader.txt`)
+- Lombok 1.18.42 throughout (`@Slf4j`, `@Data`, `@Builder`, etc.)
 - No emojis in code, logs, or comments
-
-### Pre-commit hook
-
-```shell
-ln -s ../../hooks/pre-commit .git/hooks/pre-commit
-```
-
-Runs `spotlessApply` and re-stages modified files.
+- **Pre-commit hook:** `ln -s ../../hooks/pre-commit .git/hooks/pre-commit`
 
 ## Dependency Management
 
-### PINNED dependencies
+### PINNED — do not bump without reading pinned comments and issue #964
 
-Some deps have hard version constraints marked with `// PINNED (#964): <reason>`. **Do not bump without reading the pinned comment and #964.** Key pins:
-
-| Dependency | Pinned at | Why |
+| Dependency | Constraint | Why |
 |---|---|---|
 | `protobuf-java` | 3.x | 4.x + GraalVM polyglot 25.x breaks Gradle resolution |
 | `protoc` | 3.25.5 | Must match protobuf-java 3.x used by grpc-protobuf |
-| All `org.graalvm.*` | same version (`revGraalVM`) | Mixing versions causes polyglot/Truffle runtime errors |
-| `conductor-client` in test-harness | 5.0.1 | Fat JAR classpath conflict; resolved via a stripped JAR task |
-| `awaitility` in functionalTest | 4.2.0 | e2e tests use `pollInterval(Duration)` added in 4.x (3.x in main scope) |
+| `org.graalvm.*` | all same `revGraalVM` | Mixing versions causes polyglot/Truffle runtime errors |
+| `conductor-client` (test-harness) | 5.0.1 | Fat JAR classpath conflict; resolved via stripped JAR task |
+| `awaitility` (functionalTest) | 4.2.0 | e2e uses `pollInterval(Duration)` (3.x in main scope) |
 | `jettison` | strictly 1.5.4 | No validated higher version |
 
-### Version floor dependencies
+### Version floors (CVE/compat — freely bumpable)
 
 ```groovy
 // Security: <CVE> — <reason>
 // Compat: <reason>
 ```
 
-These can be freely bumped by Dependabot.
-
-### Other constraints (in `build.gradle`)
+### Other constraints
 
 - Jackson: all modules aligned to 2.17.0
 - Tomcat: 10.1.54
-- GraalVM all artifacts (5!) must share `revGraalVM` from `dependencies.gradle`
+- GraalVM: all artifacts share `revGraalVM` from `dependencies.gradle`
+- Jedis: overridden to `revJedis` (6.0.0) — Spring Boot BOM would downgrade
 
 ### Protobuf codegen
 
-`conductor-grpc` generates Java code from `.proto` files. The `protogen` annotation processor in `conductor-annotations-processor` converts annotated POJOs to `.proto`. Build order dependency:
+`conductor-grpc` generates Java from `.proto`. The `protogen` annotation processor (`conductor-annotations-processor`) converts annotated POJOs to `.proto`. Build order dependency:
 
 ```
 compileJava.dependsOn(':conductor-common:protogen')
 ```
 
-## Java Version References
+Without this, gRPC builds fail with missing proto files.
 
-**Never link to a specific Java distribution** (Adoptium, Temurin, etc.) in docs or comments. Just say "Java 21+".
+## Java References
 
-## Writing Documentation
-
-Documentation is **derived from source**, not composed from memory. Open the source first, read what's there, then write.
-
-- **REST endpoints**: Read `rest/src/main/java/com/netflix/conductor/rest/controllers/` — copy paths from `@PostMapping`/`@GetMapping` literally
-- **CLI commands**: See `conductor-cli` (separate repo), read `cobra.Command` `Flags()`
-- **SDK examples**: Read the SDK method signature or a working test
-- **Expected output**: Get real output, paste verbatim
-- **If you can't verify**: Add `<!-- TODO: verify against live server -->` comment
-
-## Agent Behavior
-
-- Prefer automation — execute requested actions without confirmation unless blocked
-- Run independent operations in parallel
-- Always run `spotlessApply` and test before considering work complete
-- When tests or builds fail, consult CI workflows for the exact command that CI uses
+Say "Java 21+" only — never link to a specific distribution (Adoptium, Temurin, etc.).
