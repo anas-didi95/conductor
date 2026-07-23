@@ -48,6 +48,9 @@ export const SidebarFooter = ({
   customUserBlock,
 }: SidebarFooterProps) => {
   const theme = useTheme();
+  const isStaticResourcesProtected = featureFlags.isEnabled(
+    FEATURES.STATIC_RESOURCES_PROTECTION,
+  );
 
   if (customUserBlock != null) {
     return (
@@ -69,36 +72,38 @@ export const SidebarFooter = ({
   return (
     <>
       {/* Footer with Signout Button when collapsed */}
-      {!open && isAuthenticated && !isMobile && (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            mb: 2,
-          }}
-        >
-          <Tooltip title="Sign out" arrow placement="right">
-            <IconButton
-              onClick={() => {
-                if (logOut) {
-                  logOut();
-                }
-              }}
-              size="small"
-              sx={{
-                color: theme.palette.text.secondary,
-                "&:hover": {
-                  backgroundColor: alpha(theme.palette.action.hover, 0.08),
-                  color: theme.palette.text.primary,
-                },
-              }}
-            >
-              <LogoutOutlined fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      )}
+      {!open &&
+        !isMobile &&
+        (isAuthenticated || isStaticResourcesProtected) && (
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              mb: 2,
+            }}
+          >
+            <Tooltip title="Sign out" arrow placement="right">
+              <IconButton
+                onClick={() => {
+                  if (logOut) {
+                    logOut();
+                  }
+                }}
+                size="small"
+                sx={{
+                  color: theme.palette.text.secondary,
+                  "&:hover": {
+                    backgroundColor: alpha(theme.palette.action.hover, 0.08),
+                    color: theme.palette.text.primary,
+                  },
+                }}
+              >
+                <LogoutOutlined fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
 
       {/* Footer with UserInfo and Version */}
       {open && (
@@ -111,7 +116,7 @@ export const SidebarFooter = ({
           }}
         >
           {/* User Info, Signout and Copy Token */}
-          {isAuthenticated && (
+          {isAuthenticated ? (
             <Box
               sx={{
                 display: "flex",
@@ -269,7 +274,30 @@ export const SidebarFooter = ({
                 <Box sx={{ width: 40, flexShrink: 0 }} />
               </Box>
             </Box>
-          )}
+          ) : isStaticResourcesProtected ? (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                mt: 4,
+                pt: 2,
+                borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              }}
+            >
+              <Button
+                onClick={() => logOut?.()}
+                startIcon={<LogoutOutlined />}
+                size="small"
+                variant="outlined"
+                sx={{
+                  textTransform: "none",
+                  color: theme.palette.text.secondary,
+                }}
+              >
+                Sign Out
+              </Button>
+            </Box>
+          ) : null}
 
           {showCopyAlert && (
             <SnackbarMessage

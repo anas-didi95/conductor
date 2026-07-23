@@ -47,10 +47,14 @@ import jakarta.servlet.http.HttpServletResponse;
 public class AgentSpanUiContextController {
 
     private final boolean agentSpanEnabled;
+    private final boolean staticResourcesProtectionEnabled;
 
     public AgentSpanUiContextController(
-            @Value("${conductor.integrations.ai.enabled:false}") boolean agentSpanEnabled) {
+            @Value("${conductor.integrations.ai.enabled:false}") boolean agentSpanEnabled,
+            @Value("${conductor.ui.security.static-resources-protection.enabled:false}")
+                    boolean staticResourcesProtectionEnabled) {
         this.agentSpanEnabled = agentSpanEnabled;
+        this.staticResourcesProtectionEnabled = staticResourcesProtectionEnabled;
     }
 
     @GetMapping("/context.js")
@@ -75,6 +79,11 @@ public class AgentSpanUiContextController {
         js.append("\n// Injected by Conductor server (conductor.integrations.ai.enabled)\n");
         js.append("window.conductor = window.conductor || {};\n");
         js.append("window.conductor.AGENTSPAN_ENABLED = ").append(agentSpanEnabled).append(";\n");
+        js.append(
+                "\n// Injected by Conductor server (conductor.ui.security.static-resources-protection.enabled)\n");
+        js.append("window.conductor.STATIC_RESOURCES_PROTECTION = ")
+                .append(staticResourcesProtectionEnabled)
+                .append(";\n");
 
         response.getWriter().write(js.toString());
     }

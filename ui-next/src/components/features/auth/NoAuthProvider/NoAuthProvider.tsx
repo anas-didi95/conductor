@@ -6,6 +6,7 @@ import { useInterpret } from "@xstate/react";
 import React, { FunctionComponent } from "react";
 import { authProviderMachine, SupportedProviders } from "shared/state";
 import { AuthContext } from "../context";
+import { logoutOSS } from "../logoutOSS";
 import { defaultAuthState } from "../types";
 
 interface NoAuthProviderProps {
@@ -27,7 +28,11 @@ export const NoAuthProvider: FunctionComponent<NoAuthProviderProps> = ({
   });
 
   const authState = React.useMemo(
-    () => ({ ...defaultAuthState, authService: service }),
+    () => ({
+      ...defaultAuthState,
+      authService: service,
+      logOut: logoutOSS,
+    }),
     [service],
   );
 
