@@ -1,4 +1,5 @@
 import Stack from "@mui/material/Stack";
+import type { Theme } from "@mui/material/styles";
 import _isEmpty from "lodash/isEmpty";
 import { FunctionComponent, useState } from "react";
 import { ActorRef } from "xstate";
@@ -97,10 +98,10 @@ export const HeadActionButtons: FunctionComponent<HeaderActionButtonsProps> = ({
             disabled: isNewWorkflow || isTrialExpired,
             onClick: handleDeleteRequest,
             "data-testid": "workflow-definition-delete-button",
-            sx: { color: (theme) => theme.palette.error.main },
+            sx: { color: (theme: Theme) => theme.palette.error.main },
             startIcon: <TrashIcon />,
             children: <UnderlinedText text="Delete" underlinedIndexes={[0]} />,
-          },
+          } as const,
         ]
       : []),
     {
@@ -112,8 +113,8 @@ export const HeadActionButtons: FunctionComponent<HeaderActionButtonsProps> = ({
       "data-testid": "workflow-definition-reset-button",
       startIcon: <ResetIcon />,
       children: <UnderlinedText text="Reset" underlinedIndexes={[0]} />,
-      sx: { color: (theme) => theme.palette.error.main },
-    },
+      sx: { color: (theme: Theme) => theme.palette.error.main },
+    } as const,
     {
       id: "head-action-download-btn",
       variant: "text",
@@ -123,7 +124,7 @@ export const HeadActionButtons: FunctionComponent<HeaderActionButtonsProps> = ({
       "data-testid": "workflow-definition-download-button",
       startIcon: <DownloadIcon />,
       children: <UnderlinedText text="Download" underlinedIndexes={[2]} />,
-    },
+    } as const,
   ];
 
   const saveSplitButtonOptions = [

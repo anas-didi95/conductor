@@ -155,7 +155,7 @@ export default function AgentPanel() {
                       color: "secondary",
                       onClick: () => pushHistory(RUN_AGENT_URL),
                       startIcon: <PlayIcon />,
-                    },
+                    } as const,
                   ]
                 : []),
             ]}

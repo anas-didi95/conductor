@@ -1,4 +1,5 @@
 window.conductor = {
+  "MONACO_USE_LOCAL" : false,
   "ENABLE_METRICS_DASHBOARD" : false,
   "MULTITENANCY_TYPE" : "none",
   "TASK_INDEXING" : "true",

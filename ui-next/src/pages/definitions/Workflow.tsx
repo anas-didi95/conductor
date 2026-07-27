@@ -488,7 +488,7 @@ export default function WorkflowDefinitions() {
                       color: "secondary",
                       onClick: () => pushHistory(RUN_WORKFLOW_URL),
                       startIcon: <PlayIcon />,
-                    },
+                    } as const,
                   ]
                 : []),
               {
