@@ -103,7 +103,7 @@ export default function AgentDefinitions() {
                           `${AGENT_DEFINITION_URL.NEW}?language=python&framework=native`,
                         ),
                       startIcon: <AddIcon />,
-                    },
+                    } as const,
                   ]
                 : []),
             ]}

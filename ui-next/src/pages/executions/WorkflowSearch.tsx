@@ -171,7 +171,7 @@ export default function WorkflowPanel({
                 color: "secondary",
                 onClick: () => pushHistory(RUN_WORKFLOW_URL),
                 startIcon: <PlayIcon />,
-              },
+              } as const,
             ]
           : []),
         {

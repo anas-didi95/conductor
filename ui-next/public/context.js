@@ -37,6 +37,7 @@ window.conductor = {
   AGENTSPAN_ENABLED: true,
 
   // UI Configuration
+  MONACO_USE_LOCAL: false,
   PLAYGROUND: false,
   ENABLE_METRICS_DASHBOARD: false,
   METRICS_ORIGIN_URL: "",

@@ -2,6 +2,8 @@ import CssBaseline from "@mui/material/CssBaseline";
 import { inspect } from "@xstate/inspect";
 import { MessageProvider } from "components/providers/messageContext";
 import "highlight.js/styles/agate.css";
+// Configure Monaco Editor workers (local or CDN based on window.conductor.MONACO_USE_LOCAL)
+import "./monaco/setup";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { HotkeysProvider } from "react-hotkeys-hook";

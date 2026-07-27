@@ -100,6 +100,8 @@ export const FEATURES = Object.freeze({
   // Driven by the server — injected into window.conductor via /context.js
   // when static resources protection is enabled. Contains the logged-in username.
   STATIC_RESOURCES_USERNAME: "STATIC_RESOURCES_USERNAME",
+  // Runtime flag: loads Monaco workers locally instead of from CDN when true
+  MONACO_USE_LOCAL: "MONACO_USE_LOCAL",
   AI_CODER_WORKER: "AI_CODER_WORKER",
   AI_CODER_CLOUD_WORKER: "AI_CODER_CLOUD_WORKER",
   TAG_VISIBILITY: "TAG_VISIBILITY",
